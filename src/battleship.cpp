@@ -4,6 +4,11 @@
 #include <cassert>
 #include <thread>
 #include <bit>
+#include <random>
+
+// todo: generalize special treatment of 1st to
+// enable using up to 5 anchor "hit" points.
+
 /*
                 2, 4    1854594
                 2, 5    1876025
@@ -21,10 +26,10 @@
 
 using grid_t = __uint128_t;
 
-constexpr int SHIP_SIZES[] = {5,4,3,2,2};
-constexpr int NUM_SHIPS = 4;
-constexpr int BOARD_WIDTH = 9;
-constexpr int BOARD_HEIGHT = 9;
+constexpr int SHIP_SIZES[] = {5,4,3,3,2};
+constexpr int NUM_SHIPS = 5;
+constexpr int BOARD_WIDTH = 10;
+constexpr int BOARD_HEIGHT = 10;
 constexpr int BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT;
 
 // for 9x9 with 4 ships (error of 54322)
@@ -77,6 +82,12 @@ inline constexpr int popcnt(grid_t g) {
     return ret;
 }
 
+inline constexpr grid_t isolate_nth_bit(grid_t g, int bit) {
+    for (int i = 0; i < bit; i++)
+        g &= (g - 1);
+    return g & ~(g - 1);
+}
+
 struct StateEnumerator {
     std::unordered_set<grid_t> gamestates;
     std::mutex mtx;
@@ -84,7 +95,16 @@ struct StateEnumerator {
     // read only after creating the struct.
     grid_t hits = 0;
     grid_t misses = 0;
-    grid_t hit_anchor = 0; // the hits that we want the first ship placed to explain
+    grid_t hit_anchors[NUM_SHIPS-1];
+
+    // populate hit_anchors with random hits from `hits`.
+    void random_populate_hit_anchors(std::mt19937 &rng) {
+        int sample_space = popcnt(hits);
+        std::uniform_int_distribution<std::mt19937::result_type> dist(0,sample_space-1);
+
+        for (int i = 0; i < NUM_SHIPS - 1; i++)
+            hit_anchors[i] = isolate_nth_bit(hits, dist(rng));
+    }
 
     void launch_multithread() {
         std::vector<std::thread> threads;
@@ -101,7 +121,7 @@ struct StateEnumerator {
                     int x = p % BOARD_WIDTH;
                     int y = p / BOARD_WIDTH;
 
-                    if (hit_anchor)
+                    if (hit_anchors[0])
                         for (int ship = 0; ship < NUM_SHIPS; ship++)
                             recurse_enum(0, ship, ship, x, y);
                     else
@@ -174,7 +194,7 @@ struct StateEnumerator {
         mask = shift2d(VMASKS[size - 2], x, y);
         if (mask & working // blocked by another ship
             || mask & misses // blocked by "miss" marker
-            || ship_no == excl && (~mask) & hit_anchor) // anchor 1st ship to a hit
+            || ship_no == excl && (~mask) & hit_anchors[0]) // anchor 1st ship to a hit
             goto skip_vert;
         enumerate(working | mask, next, excl);
 
@@ -184,7 +204,7 @@ struct StateEnumerator {
         mask = shift2d(HMASKS[size - 2], x, y);
         if (mask & working
             || mask & misses
-            || ship_no == excl && (~mask) & hit_anchor)
+            || ship_no == excl && (~mask) & hit_anchors[0])
             goto skip_horiz;
         enumerate(working | mask, next, excl);
     skip_horiz:
