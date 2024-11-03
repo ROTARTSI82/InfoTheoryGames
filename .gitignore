@@ -1,3 +1,7 @@
 build/
 .vscode/
 dist-newstyle/
+theory-paper/
+!theory-paper/main.pdf
+!theory-paper/main.tex
+!theroy-paper/preamb.tex
