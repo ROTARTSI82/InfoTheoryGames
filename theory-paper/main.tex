@@ -1,0 +1,39 @@
+% !TeX root = main.tex
+
+\input{"preamb.tex"}
+
+\begin{document}
+    \title{Theory}
+    \author{Atharv Goel, Grant Yang}
+    \maketitle
+
+    \section{Battleship}
+
+    We can use the information from "you sunk my battleship"? Do we have to determine the bitboard layout or the exact arrangement of ships?
+
+    We want to choose the shot the minimizes $H(A | S)$, where $S$ is the state of hits and misses we see after taking the shot (can be modelled as a Bernoulli random variable for hit or miss), and $A$ is the arrangement of the opponents ships. ???? is this correct?
+
+    From the current game state, we can randomly place battleships in arrangements that satisfy what we observe for hits and misses. We want to sample this space roughly uniformly, even though arrangements where two ships are touching are probably less likely in reality due to that not being a good strategy (on the opponent's part). From these positions, we can count up the percent of time a given unexplored square is occupied, and choose the one that is closest to 50\% probability hit/miss to get the maximum amount of information from our shot. (idk) Looking at the previous paragraph, this is optimal if we simplifying it a lot where we consider the number of arrangements after an outcome to be proportional to the probability of the outcome \[\frac{H(A | S = k)}{\sum_i H(A | S = i)} = P(S=k).\] ????? idk if this is right at all. 
+
+    \newpage
+
+    \section{Hangman}
+
+    Because Dr. Aiyer can lie, we are uncertain of the current game state. Let the current game state be the random variable $S$ and the word to be guessed be the random variable $W$. $W$ is a symbol chosen from the dictionary of words, weighted by relative word frequency. 
+    
+    Since the tree of possible game state only branches due to our uncertainty of when the lie occurred, the turn number on which the lie occurs is sufficient to specify game state $S$. Thus, we can model $S$ using a geometric distribution, tuning probability $p$ such that lying towards the end of the game happens with reasonable probability.
+    \[ P(S = k) = p (1-p)^{k-1}\]
+
+    By playing the game, we can make further restrictions on the turns where the lie could have occurred, so we need to eventually switch to the conditional probability ``given that $S \not\in \{\text{impossible}\}$.'' To play optimal hangman, we want to make the moves that greedily minimize $H(W)$. We want to choose an easy way to calculate $H(W)$ lmfao what formula?
+
+    \begin{align*}
+        H(W,S) &= H(W) + H(S|W) \\
+        &= H(S) + H(W|S)
+    \end{align*}
+    \begin{align*}
+        I(W;S) &= H(W) - H(W|S) \\
+        &= H(S) - H(S|W) \\
+        &= H(W,S) - H(W) - H(S)
+    \end{align*}
+
+\end{document}
