@@ -9,6 +9,10 @@
 // todo: generalize special treatment of 1st to
 // enable using up to 5 anchor "hit" points.
 
+// possible bug: if ships are touching,
+// we only count the bitboards and not the individual arrangements
+// that lead to the overall occupancy state.
+
 /*
                 2, 4    1854594
                 2, 5    1876025
