@@ -33,19 +33,23 @@ entropyMax x y z =
     else case elemIndex (maximum e) e of
         Just n -> Just ((['a'..'z'] \\ y) !! n)
         Nothing -> error "Not Found?"
-    
     where e = [entropy x i z | i <- ['a'..'z'] \\ y]
 
+cut :: String -> Char -> [String] -> [String]
+cut x y z = 
+    filter (\w -> w =~ p) z
+    where p = concat $ map (\c -> if c == '.' then "[^" ++ [y] ++ "]" else [c]) x
+    
 ask :: String -> String -> [String] -> IO ()
 ask x y z = 
     case entropyMax x y z of
         Nothing -> putStrLn ("Solved: " ++ (filter (\w -> w =~ x) z) !! 0)
-        Just guess -> do
-            putStrLn ([guess] ++ "?")
-            word <- getLine
-            ask word ([guess]++y) z
+        Just c -> do
+            putStrLn ([c] ++ "?")
+            w <- getLine
+            ask w ([c]++y) (cut w c z)
 
 main :: IO ()
 main = do
     word <- getLine
-    ask word "" ["cat", "rat", "bat", "ate"]
+    ask word "" ["cat", "rat", "bat", "att"]
