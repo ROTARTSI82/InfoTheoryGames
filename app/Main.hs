@@ -1,4 +1,5 @@
 import Text.Regex.Posix
+import Data.List
 
 matches :: String -> [String] -> [Bool]
 matches = map . flip (=~)
@@ -26,6 +27,25 @@ entropy x y z =
     negate . sum $ filter (not . isNaN) (zipWith (*) p (map (logBase 2) p))
     where p = map (/ matchesCount x z) (pos (combs x y) z)
 
+entropyMax :: String -> String -> [String] -> Maybe Char
+entropyMax x y z = 
+    if maximum e == 0 then Nothing
+    else case elemIndex (maximum e) e of
+        Just n -> Just ((['a'..'z'] \\ y) !! n)
+        Nothing -> error "Not Found?"
+    
+    where e = [entropy x i z | i <- ['a'..'z'] \\ y]
+
+ask :: String -> String -> [String] -> IO ()
+ask x y z = 
+    case entropyMax x y z of
+        Nothing -> putStrLn ("Solved: " ++ (filter (\w -> w =~ x) z) !! 0)
+        Just guess -> do
+            putStrLn ([guess] ++ "?")
+            word <- getLine
+            ask word ([guess]++y) z
+
 main :: IO ()
 main = do
-    print ( entropy "..t" 'c' ["cat", "rat", "bat", "ate"] )
+    word <- getLine
+    ask word "" ["cat", "rat", "bat", "ate"]
