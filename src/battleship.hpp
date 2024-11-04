@@ -34,11 +34,11 @@ inline constexpr grid_t lmask(int n) {
     return ret;
 }
 
-void dump_board(grid_t grid) {
-    for (int y = 0; y < BOARD_HEIGHT; y++) {
-        std::cout << "\n\t";
+void dump_board(grid_t grid, bool full = false) {
+    for (int y = 0; y < (full ? 13 : BOARD_HEIGHT); y++) {
+        std::cout << "\n" << y << "\t";
         for (int x = 0; x < BOARD_WIDTH; x++)
-            std::cout << ((grid & mk_mask(x, y)) ? 'x' : '.');
+            std::cout << ((grid & mk_mask(y, x)) ? 'x' : '.');
     }
     std::cout << '\n';
 }
@@ -49,8 +49,8 @@ constexpr grid_t HMASKS[] = {lmask<false>(2), lmask<false>(3),
                              lmask<false>(4), lmask<false>(5)};
 
 // shift mask such that 0,0 is moved to r,c
-inline constexpr grid_t shift2d(grid_t mask, int r, int c) {
-    return mask << static_cast<grid_t>(r * BOARD_WIDTH + c);
+inline constexpr grid_t shift2d(grid_t mask, int x, int y) {
+    return mask << static_cast<grid_t>(y * BOARD_WIDTH + x);
 }
 
 inline constexpr int popcnt(grid_t g) {
@@ -75,11 +75,12 @@ struct BSConfig {
         uint8_t c : 4;
     };
 
-    ship_t ships[NUM_SHIPS]; // 10 bytes
+    ship_t ships[NUM_SHIPS]; // 5 bytes
     uint8_t vert_state = 0; // bitmap of which ships are vertical
+    uint8_t pad[2] = {0};
 
-    u128 to_bytes() {
-        return *reinterpret_cast<u128 *>(this);
+    uint64_t to_bytes() {
+        return *reinterpret_cast<uint64_t *>(this);
     }
 
     inline bool ship_is_vert(int s) {

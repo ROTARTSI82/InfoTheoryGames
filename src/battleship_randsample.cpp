@@ -15,13 +15,14 @@ inline uint64_t ship_perm_to_int(const std::vector<int> &perm) {
 }
 
 struct BSRandSample {
-    grid_t hits;
-    grid_t misses;
+    grid_t hits = 0;
+    grid_t misses = 0;
+    grid_t hit_anchors[4] = {0};
 
     std::atomic_uint32_t counts[BOARD_SIZE];
     std::atomic_uint32_t total;
 
-    std::unordered_set<u128> found;
+    std::unordered_set<uint64_t> found;
     std::unordered_set<uint64_t> impossible;
 
     void clear() {
@@ -32,6 +33,21 @@ struct BSRandSample {
             counts[x] = 0;
     }
 
+    // copied from battleship_enum.
+    void random_populate_hit_anchors(std::mt19937_64 &rng) {
+        int sample_space = popcnt(hits);
+        std::uniform_int_distribution<std::mt19937_64::result_type> dist(0,sample_space-1);
+
+        for (int i = 0; i < NUM_SHIPS - 1; i++) {
+            grid_t prev = i > 0 ? hit_anchors[i-1] : 0;
+            hit_anchors[i] = prev;
+            grid_t cand = 0;
+            while ((cand & prev) == cand)
+                cand = isolate_nth_bit(hits, dist(rng));
+            hit_anchors[i] |= cand;
+        }
+    }
+
     // returns 1 if the permuation found something
     // 0 if it was impossible.
     // 2 if we found a duplicate.
@@ -39,13 +55,17 @@ struct BSRandSample {
     int try_random(std::mt19937_64 &rng) {
         RAND_PERM(ship_perm, NUM_SHIPS, rng);
 
+        assert(impossible.size() < 120);
+
         int perm;
         while (impossible.contains(perm = ship_perm_to_int(ship_perm)))
             std::shuffle(ship_perm.begin(), ship_perm.end(), rng);
 
-        grid_t working = 0;
+        grid_t working = 0, mask = 0;
         BSConfig conf{};
+        int ship_idx = 0;
         for (int ship : ship_perm) {
+            assert(!(working >> (grid_t)100));
             RAND_PERM(board_seq, BOARD_SIZE*2, rng);
 
             int size = SHIP_SIZES[ship];
@@ -55,19 +75,21 @@ struct BSRandSample {
                 int x = sq % BOARD_WIDTH;
                 int y = sq / BOARD_WIDTH;
 
-                if ((!vert && x + size > BOARD_WIDTH)
+                if (((!vert) && x + size > BOARD_WIDTH)
                     || (vert && y + size > BOARD_HEIGHT)) // off board 
                     continue;
-                grid_t mask = shift2d((vert ? VMASKS : HMASKS)[size - 2], x, y);
+                mask = shift2d((vert ? VMASKS : HMASKS)[size - 2], x, y);
                 if (working & mask || misses & mask)
                     continue; // blocked by another ship or "miss"
-                if (ship == ship_perm.back() && ((~(working | mask)) & hits)) {
-                    std::cout << "fail\n";
-                    continue; // last ship & we havent satisfied all hits
-                }
-                // if (ship == ship_perm.front() && ((mask & hits) == 0)) 
-                //     continue; // first ship does not satisfy any hits.
-                //               // idk if we actually want to skip these.
+                if (ship == ship_perm.back()) {
+                    if ((~(working | mask)) & hits)
+                        continue; // we placed the last ship without satisfying all hits
+                } else if (((working | mask) & hit_anchors[ship_idx]) != hit_anchors[ship_idx]) 
+                    continue; // ship does not satisfy required hit anchor
+
+                assert(!(mask >> static_cast<grid_t>(BOARD_SIZE)));
+                assert(popcnt(mask) == size);
+                assert(popcnt(working | mask) == popcnt(working) + popcnt(mask));
                 working |= mask;
                 conf.set_ship_vert(ship, vert);
                 conf.ships[ship].r = y;
@@ -82,15 +104,12 @@ struct BSRandSample {
             return 0; // impossible
 
         succ:
-            ;
+            ship_idx++;
         }
 
-        // there is currently a bug, this assert triggered once.
-        if (popcnt(working) != 5+4+3+3+2) {
-            dump_board(working);
-            assert(false);
-        }
-        if (found.emplace(conf.to_bytes()).second) {
+        assert(popcnt(working) == 5+4+3+3+2);
+        assert(!(working >> (grid_t)BOARD_SIZE));
+        if (found.insert(conf.to_bytes()).second) {
             total++;
             for (int i = 0; i < BOARD_SIZE; i++)
                 if (working & mk_mask(i))

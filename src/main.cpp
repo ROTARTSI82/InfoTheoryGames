@@ -60,13 +60,32 @@ void test_randsample() {
 
     BSRandSample e;
     e.clear();
-    for (int i = 0; i < 5; i++)
-        e.hits |= mk_mask(dist(rng));
-    for (int i = 0; i < 5; i++)
-        e.misses |= mk_mask(dist(rng));
+    e.hits = e.misses = 1;
+    while (e.hits & e.misses) {
+        e.hits = e.misses = 0;
+        for (int i = 0; i < 5; i++)
+            e.hits |= mk_mask(dist(rng));
+        for (int i = 0; i < 5; i++)
+            e.misses |= mk_mask(dist(rng));
+    }
 
-    for (int i = 0; i < 4096; i++)
-        std::cout << e.try_random(rng);
+    e.random_populate_hit_anchors(rng);
+
+    std::cout << "===== [ HITS ] =====\n";
+    dump_board(e.hits, true);
+    std::cout << "======= [ MISS ] =======\n";
+    dump_board(e.misses, true);
+
+    for (int i = 0; i < 4; i++) {
+        std::cout << "======= [ ANCH x ] =======\n";
+        dump_board(e.hit_anchors[i], true);
+    }
+
+    // return;
+
+    int its = 0;
+    while (++its && e.total < 4096)
+        std::cout << e.try_random(rng) << std::flush;
     std::cout << '\n';
 
     std::cout << "===== [ HITS ] =====\n";
@@ -76,15 +95,16 @@ void test_randsample() {
 
     for (int y = 0; y < BOARD_WIDTH; y++) {
         for (int x = 0; x < BOARD_WIDTH; x++) {
-            std::cout << '\t' << std::setprecision(0.01) << static_cast<double>(e.counts[y * BOARD_WIDTH + x]) / e.total;
+            std::cout << '\t' << std::setprecision(3) << static_cast<double>(e.counts[y * BOARD_WIDTH + x]) / e.total;
         }
         std::cout << '\n';
     }
 
-    std::cout << "sample size = " << e.total << '\n';
+    std::cout << "sample size = " << e.total << " in iterations = " << its << '\n';
     std::cout << "num impossible = " << e.impossible.size() << '\n';
 }
 
 int main() {
+    std::cout << "config size = " << sizeof(BSConfig) << '\n';
     test_randsample();
 }

@@ -94,8 +94,13 @@ struct StateEnumerator {
      * and then go on, to eliminate many branches as early as possible.
      */
     inline void enumerate(grid_t working, int ship_no, int excl) {
-        // assert(!(working >> (grid_t)100));
+        if (working >> (grid_t)100) {
+            std::cout << "working:\n";
+            dump_board(working, true);
+            assert(false);
+        }
         if (ship_no >= NUM_SHIPS) {
+            assert(popcnt(working) == 5+4+3+3+2);
             if ((~working) & hits)
                 return; // there is a 0 in `working` where there should be a hit.
             std::lock_guard<std::mutex> lg(mtx);
@@ -133,24 +138,24 @@ struct StateEnumerator {
 
         // first handle vertical placement, then horizontal.
         if (x + size > BOARD_WIDTH) // off board 
-            goto skip_vert;
-        mask = shift2d(VMASKS[size - 2], x, y);
+            goto skip_horiz;
+        mask = shift2d(HMASKS[size - 2], x, y);
         if (mask & working // blocked by another ship
             || mask & misses // blocked by "miss" marker
             || (ship_no == excl && (~mask) & hit_anchors[0])) // anchor 1st ship to a hit
-            goto skip_vert;
+            goto skip_horiz;
         enumerate(working | mask, next, excl);
 
-    skip_vert:
+    skip_horiz:
         if (y + size > BOARD_HEIGHT)
-            goto skip_horiz;
-        mask = shift2d(HMASKS[size - 2], x, y);
+            goto skip_vert;
+        mask = shift2d(VMASKS[size - 2], x, y);
         if (mask & working
             || mask & misses
             || (ship_no == excl && (~mask) & hit_anchors[0]))
-            goto skip_horiz;
+            goto skip_vert;
         enumerate(working | mask, next, excl);
-    skip_horiz:
+    skip_vert:
         ;
     }
 };

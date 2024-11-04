@@ -3,8 +3,8 @@ project(InfoGames)
 
 add_executable(InfoGames src/main.cpp)
 target_include_directories(InfoGames PUBLIC src)
-target_compile_options(InfoGames PUBLIC -std=c++20 -mtune=native -march=native -Ofast -fno-exceptions -Wall -Wextra -Wpedantic)
+target_compile_options(InfoGames PUBLIC -std=c++20 -mtune=native -march=native -Ofast -fno-exceptions -Wall -Wextra -Wpedantic -g3 -glldb -fno-omit-frame-pointer -fsanitize=address )
 
 # -g3 -glldb -fno-omit-frame-pointer -fsanitize=address 
 
-target_link_options(InfoGames PUBLIC -std=c++20 -mtune=native -march=native -Ofast -fno-exceptions -Wall -Wextra -Wpedantic)
+target_link_options(InfoGames PUBLIC -std=c++20 -mtune=native -march=native -Ofast -fno-exceptions -Wall -Wextra -Wpedantic -g3 -glldb -fno-omit-frame-pointer -fsanitize=address )
