@@ -14,7 +14,7 @@ matchesCount :: String -> [String] -> Double
 matchesCount = count .: matches
 
 combs :: String -> Char -> [String]
-combs [] y = []
+combs [] _ = []
 combs [x] y = 
     if x == '.' then ["[^" ++ [y] ++ "]", [y]]
     else [[x]]
@@ -54,4 +54,7 @@ ask currentWord guessedChars wordList =
 main :: IO ()
 main = do
     word <- getLine
-    ask word "" ["cat", "rat", "bat", "att"]
+    contents <- readFile "words.txt"
+    let wordList = filter ((== length word) . length) $ words contents
+    print (length wordList)
+    ask word "" wordList
