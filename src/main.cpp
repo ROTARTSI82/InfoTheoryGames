@@ -1,11 +1,14 @@
-#include <iostream>
-#include "battleship.cpp"
+
+#include "battleship_enum.cpp"
+#include "battleship_randsample.cpp"
 #include <fstream>
 
-int main() {
+
+void test_enum() {
+    std::cout << "atomic int = " << sizeof(std::atomic_uint32_t) << '\n';
     std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist(0,BOARD_SIZE-1); // distribution in range [1, 6]
+    std::mt19937_64 rng(dev());
+    std::uniform_int_distribution<std::mt19937_64::result_type> dist(0,BOARD_SIZE-1); // distribution in range [1, 6]
 
     std::cout << sizeof(grid_t);
     std::cout << "\tHi\n";
@@ -48,4 +51,40 @@ int main() {
     dump_board(e.hits);
     std::cout << "======= [ MISS ] =======\n";
     dump_board(e.misses);
+}
+
+void test_randsample() {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    std::uniform_int_distribution<std::mt19937_64::result_type> dist(0,BOARD_SIZE-1); // distribution in range [1, 6]
+
+    BSRandSample e;
+    e.clear();
+    for (int i = 0; i < 5; i++)
+        e.hits |= mk_mask(dist(rng));
+    for (int i = 0; i < 5; i++)
+        e.misses |= mk_mask(dist(rng));
+
+    for (int i = 0; i < 4096; i++)
+        std::cout << e.try_random(rng);
+    std::cout << '\n';
+
+    std::cout << "===== [ HITS ] =====\n";
+    dump_board(e.hits);
+    std::cout << "======= [ MISS ] =======\n";
+    dump_board(e.misses);
+
+    for (int y = 0; y < BOARD_WIDTH; y++) {
+        for (int x = 0; x < BOARD_WIDTH; x++) {
+            std::cout << '\t' << std::setprecision(0.01) << static_cast<double>(e.counts[y * BOARD_WIDTH + x]) / e.total;
+        }
+        std::cout << '\n';
+    }
+
+    std::cout << "sample size = " << e.total << '\n';
+    std::cout << "num impossible = " << e.impossible.size() << '\n';
+}
+
+int main() {
+    test_randsample();
 }
