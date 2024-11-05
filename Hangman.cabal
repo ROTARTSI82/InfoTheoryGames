@@ -70,7 +70,8 @@ executable Hangman
     build-depends:
         base ^>=4.16.4.0,
         regex-posix,
-        unordered-containers
+        unordered-containers,
+        split
 
     -- Directories containing source files.
     hs-source-dirs:   app

@@ -30,3 +30,10 @@ be optimized more, but it's probably better to first implement word frequency + 
 ## 0.2.0.1 -- 2024-11-04
 
 * Small edits.
+
+## 0.2.1.0 -- 2024-11-04
+
+* Added word frequency. The results seemed to include a lot of random letters, so I added a filter for
+the k most popular words (currently set to 50k out of the original 333k words). Most of these still do
+not make any sense, but I'm not sure if I can set the filter lower? I think it's because the data is
+based off of google search results or something. 
