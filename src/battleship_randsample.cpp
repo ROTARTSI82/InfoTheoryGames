@@ -19,10 +19,13 @@ struct BSRandSample {
     grid_t misses = 0;
     grid_t hit_anchors[4] = {0};
 
-    std::atomic_uint32_t counts[BOARD_SIZE];
-    std::atomic_uint32_t total;
+    std::uint32_t counts[BOARD_SIZE];
+    std::uint32_t total;
 
+    std::mutex mtx;
     std::unordered_set<uint64_t> found;
+
+    std::mutex impossible_mtx;
     std::unordered_set<uint64_t> impossible;
 
     void clear() {
@@ -54,12 +57,13 @@ struct BSRandSample {
     // 3 if we failed to satisfy all hits or it was impossible
     int try_random(std::mt19937_64 &rng) {
         RAND_PERM(ship_perm, NUM_SHIPS, rng);
-
-        assert(impossible.size() < 120);
-
         int perm;
-        while (impossible.contains(perm = ship_perm_to_int(ship_perm)))
-            std::shuffle(ship_perm.begin(), ship_perm.end(), rng);
+        {
+            std::lock_guard<std::mutex> lg(impossible_mtx);
+            assert(impossible.size() < 120);
+            while (impossible.contains(perm = ship_perm_to_int(ship_perm)))
+                std::shuffle(ship_perm.begin(), ship_perm.end(), rng);
+        }
 
         grid_t working = 0, mask = 0;
         BSConfig conf{};
@@ -78,7 +82,7 @@ struct BSRandSample {
                 if (((!vert) && x + size > BOARD_WIDTH)
                     || (vert && y + size > BOARD_HEIGHT)) // off board 
                     continue;
-                mask = shift2d((vert ? VMASKS : HMASKS)[size - 2], x, y);
+                mask = mk_ship_mask(size, vert, x, y);
                 if (working & mask || misses & mask)
                     continue; // blocked by another ship or "miss"
                 if (ship == ship_perm.back()) {
@@ -100,7 +104,9 @@ struct BSRandSample {
             if (ship == ship_perm.back())
                 return 3;
 
+            impossible_mtx.lock();
             impossible.emplace(perm);
+            impossible_mtx.unlock();
             return 0; // impossible
 
         succ:
@@ -109,11 +115,14 @@ struct BSRandSample {
 
         assert(popcnt(working) == 5+4+3+3+2);
         assert(!(working >> (grid_t)BOARD_SIZE));
+
+        std::lock_guard<std::mutex> lg(mtx);
         if (found.insert(conf.to_bytes()).second) {
             total++;
-            for (int i = 0; i < BOARD_SIZE; i++)
-                if (working & mk_mask(i))
-                    counts[i]++;
+            while (working) {
+                counts[countr_zero(working)]++;
+                working &= (working - 1);
+            }
             return 1;
         }
 

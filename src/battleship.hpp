@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef BATTLESHIP_HPP
+#define BATTLESHIP_HPP
+
 #include <iostream>
 #include <unordered_set>
 #include <cstdint>
@@ -53,13 +56,65 @@ inline constexpr grid_t shift2d(grid_t mask, int x, int y) {
     return mask << static_cast<grid_t>(y * BOARD_WIDTH + x);
 }
 
-inline constexpr int popcnt(grid_t g) {
-    int ret = 0;
-    while (g) {
-        ret += 1;
-        g &= (g - 1);
+inline constexpr grid_t mk_ship_mask(int size, bool vert, int x, int y) {
+    return shift2d((vert ? VMASKS : HMASKS)[size - 2], x, y);
+}
+
+// REQ_MASK[i][p][j][vert] will represent the possible positions for ship j given that 
+// there exists a ship i at square p. 
+// REQ_MASK[i][0][i][vert] = initial starting point for ship type i given boundaries.
+// this has huge wastage as ships 2 and 3 are identical.
+grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {};
+void init_req_masks() {
+    for (int base_ship = 0; base_ship < NUM_SHIPS; base_ship++) {
+        int base_size = SHIP_SIZES[base_ship];
+        for (int place = 0; place < BOARD_SIZE * 2; place++) {
+            int base_sq = place % BOARD_SIZE;
+            bool base_vert = place / BOARD_SIZE;
+            int base_x = base_sq % BOARD_WIDTH;
+            int base_y = base_sq / BOARD_WIDTH;
+
+            if ((!base_vert && base_x + base_size > BOARD_WIDTH)
+                || (base_vert && base_y + base_size > BOARD_HEIGHT))
+                continue; // base doesnt even fit.
+
+            grid_t base = mk_ship_mask(base_size, base_vert, base_x, base_y);
+            for (int query = 0; query < NUM_SHIPS * 2; query++) {
+                int place_ship = query % NUM_SHIPS;
+                int place_size = SHIP_SIZES[place_ship];
+                bool place_vert = query / NUM_SHIPS;
+
+                // if we are querying about placing a ship already placed
+                // we reinterpret to be about placing the ship onto an empty board.
+                grid_t eff_base = (place_ship == base_ship ? 0 : base);
+
+                REQ_MASKS[base_ship][place][place_ship][place_vert?1:0] = 0;
+                for (int qsq = 0; qsq < BOARD_SIZE; qsq++) {
+                    int p_x = qsq % BOARD_WIDTH;
+                    int p_y = qsq / BOARD_WIDTH;
+                    if ((!place_vert && p_x+ place_size > BOARD_WIDTH)
+                        || (place_vert && p_y + place_size > BOARD_HEIGHT)
+                        || (eff_base & mk_ship_mask(place_size, place_vert, p_x, p_y)))
+                        continue;
+                    
+                    REQ_MASKS[base_ship][place][place_ship][place_vert?1:0]
+                        |= mk_mask(p_x, p_y);
+                }
+            }
+        }
     }
-    return ret;
+}
+
+inline constexpr int popcnt(grid_t g) {
+    uint64_t lo = g;
+    uint64_t hi = (g >> static_cast<grid_t>(64));
+    return std::popcount(lo) + std::popcount(hi);
+}
+
+inline constexpr int countr_zero(grid_t g) {
+    uint64_t lo = g;
+    uint64_t hi = (g >> static_cast<grid_t>(64));
+    return lo ? std::countr_zero(lo) : 64 + std::countr_zero(hi);
 }
 
 inline constexpr grid_t isolate_nth_bit(grid_t g, int bit) {
@@ -67,7 +122,6 @@ inline constexpr grid_t isolate_nth_bit(grid_t g, int bit) {
         g &= (g - 1);
     return g & ~(g - 1);
 }
-
 
 struct BSConfig {
     struct ship_t {
@@ -94,3 +148,5 @@ struct BSConfig {
             vert_state &= ~(static_cast<uint8_t>(1) << s);
     }
 };
+
+#endif

@@ -13,17 +13,19 @@ void test_enum() {
     std::cout << sizeof(grid_t);
     std::cout << "\tHi\n";
     StateEnumerator e{};
-    for (int i = 0; i < 5; i++)
-        e.hits |= mk_mask(dist(rng));
-    for (int i = 0; i < 5; i++)
-        e.misses |= mk_mask(dist(rng));
-    e.random_populate_hit_anchors(rng);
+    e.hits = e.misses = 0;
+    // for (int i = 0; i < 5; i++)
+    //     e.hits |= mk_mask(dist(rng));
+    // for (int i = 0; i < 5; i++)
+    //     e.misses |= mk_mask(dist(rng));
+    // e.random_populate_hit_anchors(rng);
+    e.hit_anchors[0] = 0;
     std::cout << "lf max_buckets=" << e.gamestates.max_bucket_count() 
         << ", load=" << e.gamestates.max_load_factor() 
         << ", size=" << e.gamestates.max_size() 
         << ", buckets=" << e.gamestates.bucket_count() << '\n';
     e.launch_multithread();
-    // e.enumerate(0, 0, 4);
+    // e.enumerate(0, 0, -1);
 
     // grid_t *convert = new grid_t[size];
     // std::cout << "beginning conversion to vector\n";
@@ -105,6 +107,7 @@ void test_randsample() {
 }
 
 int main() {
+    init_req_masks();
     std::cout << "config size = " << sizeof(BSConfig) << '\n';
     test_randsample();
 }

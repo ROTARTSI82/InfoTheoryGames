@@ -36,6 +36,7 @@ lf buckets=576460752303423487, load=1, size=576460752303423487, buckets=10535993
 
 struct StateEnumerator {
     std::unordered_set<grid_t> gamestates;
+    std::atomic_uint64_t count = 0;
     std::mutex mtx;
 
     // read only after creating the struct.
@@ -66,11 +67,11 @@ struct StateEnumerator {
                     int x = p % BOARD_WIDTH;
                     int y = p / BOARD_WIDTH;
 
-                    if (hit_anchors[0])
+                    if (hit_anchors[0] && false)
                         for (int ship = 0; ship < NUM_SHIPS; ship++)
                             recurse_enum(0, ship, ship, x, y);
                     else
-                        recurse_enum(0, 0, 0, x, y);
+                        recurse_enum(0, 0, -1, x, y);
                 }
             });
         }
@@ -94,17 +95,17 @@ struct StateEnumerator {
      * and then go on, to eliminate many branches as early as possible.
      */
     inline void enumerate(grid_t working, int ship_no, int excl) {
-        if (working >> (grid_t)100) {
-            std::cout << "working:\n";
-            dump_board(working, true);
-            assert(false);
-        }
+        assert(!(working >> (grid_t)BOARD_SIZE));
+
         if (ship_no >= NUM_SHIPS) {
             assert(popcnt(working) == 5+4+3+3+2);
             if ((~working) & hits)
                 return; // there is a 0 in `working` where there should be a hit.
-            std::lock_guard<std::mutex> lg(mtx);
-            gamestates.emplace(working);
+            // std::lock_guard<std::mutex> lg(mtx);
+            count++;
+            // gamestates.emplace(working);
+            // if (!gamestates.emplace(working).second)
+            //     std::cout << "DUPLICATE\n";
             return;
         }
 
@@ -117,7 +118,7 @@ struct StateEnumerator {
             for (int y = 0; y < BOARD_HEIGHT; y++) {
                 if (ship_no < 2) {
                     for (int i = 0; i < ship_no; i++) std::cout << '\t';
-                    std::cout << x << ", " << y << '\t' << std::this_thread::get_id() << '\t' << gamestates.size() << '\n';
+                    std::cout << x << ", " << y << '\t' << std::this_thread::get_id() << '\t' << gamestates.size() << " / " << count << '\n';
                 }
 
                 recurse_enum(working, ship_no, excl, x, y);
@@ -142,7 +143,7 @@ struct StateEnumerator {
         mask = shift2d(HMASKS[size - 2], x, y);
         if (mask & working // blocked by another ship
             || mask & misses // blocked by "miss" marker
-            || (ship_no == excl && (~mask) & hit_anchors[0])) // anchor 1st ship to a hit
+            || (ship_no == excl && ((~mask) & hit_anchors[0]))) // anchor 1st ship to a hit
             goto skip_horiz;
         enumerate(working | mask, next, excl);
 
@@ -152,7 +153,7 @@ struct StateEnumerator {
         mask = shift2d(VMASKS[size - 2], x, y);
         if (mask & working
             || mask & misses
-            || (ship_no == excl && (~mask) & hit_anchors[0]))
+            || (ship_no == excl && ((~mask) & hit_anchors[0])))
             goto skip_vert;
         enumerate(working | mask, next, excl);
     skip_vert:
