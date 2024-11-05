@@ -58,7 +58,7 @@ parse word = (head (splitOn "," word), read $ splitOn "," word !! 1)
 
 main :: IO ()
 main = do
-    contents <- readFile "wordFreq.csv"
+    contents <- readFile "wordFreq2.csv"
     let wordList = map parse $ take 50000 $ words contents
     word <- getLine
     let newList = filter ((== length word) . length . fst) wordList

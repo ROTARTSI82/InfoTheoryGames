@@ -44,3 +44,7 @@ based off of google search results or something.
 the list into two sublists, the first being truth, and the second being lie. Then, it only keeps parititoning
 the first list, but it can just filter down the others (since you can only lie once). This repeats till there
 is one word left.
+
+## 0.3.1.0 -- 2024-11-04
+
+* Alternate dictionary added because the other one was of debatable authenticity.
