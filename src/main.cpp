@@ -85,9 +85,12 @@ void test_randsample() {
 
     // return;
 
-    int its = 0;
-    while (++its && e.total < 4096)
-        std::cout << e.try_random(rng) << std::flush;
+    // int its = 0;
+    // while (++its && e.total < 4096)
+    //     std::cout << e.try_random(rng) << std::flush;
+
+    e.launch_multithread(4096 * 128);
+
     std::cout << '\n';
 
     std::cout << "===== [ HITS ] =====\n";
@@ -102,12 +105,12 @@ void test_randsample() {
         std::cout << '\n';
     }
 
-    std::cout << "sample size = " << e.total << " in iterations = " << its << '\n';
+    std::cout << "sample size = " << e.total << " in iterations = " << e.its << '\n';
     std::cout << "num impossible = " << e.impossible.size() << '\n';
 }
 
 int main() {
     init_req_masks();
-    std::cout << "config size = " << sizeof(BSConfig) << '\n';
+    std::cout << "config size = " << sizeof(BSConfig2) << '\n';
     test_randsample();
 }

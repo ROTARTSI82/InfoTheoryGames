@@ -65,7 +65,7 @@ inline constexpr grid_t mk_ship_mask(int size, bool vert, int x, int y) {
 // REQ_MASK[i][0][i][vert] = initial starting point for ship type i given boundaries.
 // this has huge wastage as ships 2 and 3 are identical.
 grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {};
-void init_req_masks() {
+constexpr void init_req_masks() {
     for (int base_ship = 0; base_ship < NUM_SHIPS; base_ship++) {
         int base_size = SHIP_SIZES[base_ship];
         for (int place = 0; place < BOARD_SIZE * 2; place++) {
@@ -123,29 +123,33 @@ inline constexpr grid_t isolate_nth_bit(grid_t g, int bit) {
     return g & ~(g - 1);
 }
 
-struct BSConfig {
-    struct ship_t {
-        uint8_t r : 4;
-        uint8_t c : 4;
-    };
+struct BSConfig2 {
+    uint8_t pad[8 - NUM_SHIPS];
+    uint8_t ships[NUM_SHIPS];
 
-    ship_t ships[NUM_SHIPS]; // 5 bytes
-    uint8_t vert_state = 0; // bitmap of which ships are vertical
-    uint8_t pad[2] = {0};
-
-    uint64_t to_bytes() {
+    // to_bytes() and to_bytes_constexpr() should be equivalent
+    inline uint64_t to_bytes() {
         return *reinterpret_cast<uint64_t *>(this);
     }
 
+    inline constexpr uint64_t to_bytes_constexpr() {
+        uint64_t ret = 0;
+        for (int i = 0; i < NUM_SHIPS; i++) {
+            ret |= ships[i];
+            ret <<= 8;
+        }
+
+        return ret;
+    }
+
     inline bool ship_is_vert(int s) {
-        return (vert_state >> s) & 1;
+        return ships[s] / BOARD_SIZE;
     }
 
     inline void set_ship_vert(uint8_t s, bool vert) {
+        ships[s] %= BOARD_SIZE;
         if (vert)
-            vert_state |= static_cast<uint8_t>(1) << s;
-        else
-            vert_state &= ~(static_cast<uint8_t>(1) << s);
+            ships[s] += BOARD_SIZE;
     }
 };
 

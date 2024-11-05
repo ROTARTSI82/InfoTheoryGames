@@ -69,9 +69,9 @@ struct StateEnumerator {
 
                     if (hit_anchors[0] && false)
                         for (int ship = 0; ship < NUM_SHIPS; ship++)
-                            recurse_enum(0, ship, ship, x, y);
+                            recurse_enum(0, 0, ship, ship, x, y);
                     else
-                        recurse_enum(0, 0, -1, x, y);
+                        recurse_enum(0, 0, 0, -1, x, y);
                 }
             });
         }
@@ -94,7 +94,7 @@ struct StateEnumerator {
      * as a good strat is to satisfy the hit marker given by `hit_anchor`
      * and then go on, to eliminate many branches as early as possible.
      */
-    inline void enumerate(grid_t working, int ship_no, int excl) {
+    inline void enumerate(uint64_t conf, grid_t working, int ship_no, int excl) {
         assert(!(working >> (grid_t)BOARD_SIZE));
 
         if (ship_no >= NUM_SHIPS) {
@@ -109,10 +109,20 @@ struct StateEnumerator {
             return;
         }
 
-        // int sum = 0;
-        // for (int i = 0; i < ship_no; i++)
-        //     sum += SHIP_SIZES[i];
-        // assert(popcnt(working) == sum);
+        grid_t cand_horiz = REQ_MASKS[ship_no][0][ship_no][0]; 
+        grid_t cand_vert = REQ_MASKS[ship_no][0][ship_no][1];
+        // REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
+        for (int i = 0; i < ship_no; i++) {
+            int sq = (conf >> (i*8)) & 0xffUL;
+            cand_horiz &= REQ_MASKS[i][sq][ship_no][0];
+            cand_vert &= REQ_MASKS[i][sq][ship_no][1];
+        }
+
+        if (ship_no != excl) {
+            int sq = (conf >> (excl*8)) & 0xffUL;
+            cand_horiz &= REQ_MASKS[excl][sq][ship_no][0];
+            cand_vert &= REQ_MASKS[excl][sq][ship_no][1];
+        }
 
         for (int x = 0; x < BOARD_WIDTH; x++) {
             for (int y = 0; y < BOARD_HEIGHT; y++) {
@@ -121,12 +131,12 @@ struct StateEnumerator {
                     std::cout << x << ", " << y << '\t' << std::this_thread::get_id() << '\t' << gamestates.size() << " / " << count << '\n';
                 }
 
-                recurse_enum(working, ship_no, excl, x, y);
+                recurse_enum(conf, working, ship_no, excl, x, y);
             }
         }
     }
 
-    inline void recurse_enum(grid_t working, int ship_no, int excl, int x, int y) {
+    inline void recurse_enum(uint64_t conf, grid_t working, int ship_no, int excl, int x, int y) {
         grid_t mask;
         const int size = SHIP_SIZES[ship_no];
 
@@ -145,7 +155,9 @@ struct StateEnumerator {
             || mask & misses // blocked by "miss" marker
             || (ship_no == excl && ((~mask) & hit_anchors[0]))) // anchor 1st ship to a hit
             goto skip_horiz;
-        enumerate(working | mask, next, excl);
+        conf &= (~0xffUL) << (ship_no*8);
+        conf |= (y * BOARD_WIDTH + x) << (ship_no*8);
+        enumerate(conf, working | mask, next, excl);
 
     skip_horiz:
         if (y + size > BOARD_HEIGHT)
@@ -155,7 +167,9 @@ struct StateEnumerator {
             || mask & misses
             || (ship_no == excl && ((~mask) & hit_anchors[0])))
             goto skip_vert;
-        enumerate(working | mask, next, excl);
+        conf &= (~0xffUL) << (ship_no*8);
+        conf |= (100 + y * BOARD_WIDTH + x) << (ship_no*8);
+        enumerate(conf, working | mask, next, excl);
     skip_vert:
         ;
     }

@@ -19,19 +19,21 @@ struct BSRandSample {
     grid_t misses = 0;
     grid_t hit_anchors[4] = {0};
 
-    std::uint32_t counts[BOARD_SIZE];
-    std::uint32_t total;
+    std::atomic_uint32_t counts[BOARD_SIZE];
+    std::atomic_uint32_t total;
+    std::atomic_uint32_t its;
 
-    std::mutex mtx;
-    std::unordered_set<uint64_t> found;
+    // std::mutex mtx;
+    // std::unordered_set<uint64_t> found;
 
     std::mutex impossible_mtx;
     std::unordered_set<uint64_t> impossible;
 
     void clear() {
-        found.clear();
+        // found.clear();
         impossible.clear();
         total = 0;
+        its = 0;
         for (int x = 0; x < BOARD_SIZE; x++)
             counts[x] = 0;
     }
@@ -66,16 +68,29 @@ struct BSRandSample {
         }
 
         grid_t working = 0, mask = 0;
-        BSConfig conf{};
+        BSConfig2 conf{};
         int ship_idx = 0;
         for (int ship : ship_perm) {
             assert(!(working >> (grid_t)100));
-            RAND_PERM(board_seq, BOARD_SIZE*2, rng);
+
+            grid_t cand_horiz = REQ_MASKS[ship][0][ship][0] & ~misses; 
+            grid_t cand_vert = REQ_MASKS[ship][0][ship][1] & ~misses;
+            // REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
+            for (int i = 0; i < ship_idx; i++) {
+                int sq = conf.ships[i];
+                cand_horiz &= REQ_MASKS[i][sq][ship][0];
+                cand_vert &= REQ_MASKS[i][sq][ship][1];
+            }
+
+            int nhoriz = popcnt(cand_horiz);
+
+            RAND_PERM(board_seq, nhoriz + popcnt(cand_vert), rng);
 
             int size = SHIP_SIZES[ship];
             for (int trial : board_seq) {
-                bool vert = trial >= BOARD_SIZE;
-                int sq = trial % BOARD_SIZE;
+                bool vert = trial >= nhoriz;
+                int sq = countr_zero(isolate_nth_bit(
+                    vert ? cand_vert : cand_horiz, trial % nhoriz));
                 int x = sq % BOARD_WIDTH;
                 int y = sq / BOARD_WIDTH;
 
@@ -95,9 +110,10 @@ struct BSRandSample {
                 assert(popcnt(mask) == size);
                 assert(popcnt(working | mask) == popcnt(working) + popcnt(mask));
                 working |= mask;
-                conf.set_ship_vert(ship, vert);
-                conf.ships[ship].r = y;
-                conf.ships[ship].c = x;
+                conf.ships[ship] = (vert?BOARD_SIZE:0) + y*BOARD_WIDTH + x;
+                // conf.set_ship_vert(ship, vert);
+                // conf.ships[ship].r = y;
+                // conf.ships[ship].c = x;
                 goto succ;
             }
 
@@ -116,17 +132,43 @@ struct BSRandSample {
         assert(popcnt(working) == 5+4+3+3+2);
         assert(!(working >> (grid_t)BOARD_SIZE));
 
-        std::lock_guard<std::mutex> lg(mtx);
-        if (found.insert(conf.to_bytes()).second) {
-            total++;
-            while (working) {
-                counts[countr_zero(working)]++;
-                working &= (working - 1);
-            }
-            return 1;
+        total++;
+        while (working) {
+            counts[countr_zero(working)]++;
+            working &= (working - 1);
         }
+        return 1;
 
-        return 2;
+        // std::lock_guard<std::mutex> lg(mtx);
+        // if (found.insert(conf.to_bytes()).second) {
+        //     total++;
+        //     while (working) {
+        //         counts[countr_zero(working)]++;
+        //         working &= (working - 1);
+        //     }
+        //     return 1;
+        // }
+
+        // return 2;
+    }
+
+    void launch_multithread(uint32_t max) {
+        int conc = std::thread::hardware_concurrency();
+        std::vector<std::thread> threads;
+        for (int i = 0; i < conc; i++)
+            threads.emplace_back([=, this]() {
+                std::random_device dev;
+                std::mt19937_64 rng(dev());
+                while (total < max) {
+                    try_random(rng);
+                    its++;
+                    if (its % 4096 == 0)
+                        std::cout << "prog = " << total << " / " << its << std::endl;
+                }
+            });
+        
+        for (auto &t : threads)
+            t.join();
     }
 
     
