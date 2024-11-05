@@ -37,3 +37,10 @@ be optimized more, but it's probably better to first implement word frequency + 
 the k most popular words (currently set to 50k out of the original 333k words). Most of these still do
 not make any sense, but I'm not sure if I can set the filter lower? I think it's because the data is
 based off of google search results or something. 
+
+## 0.3.0.0 -- 2024-11-04
+
+* Lying detection! Instead of filtering the list of potential candidates by the user input, it partitions
+the list into two sublists, the first being truth, and the second being lie. Then, it only keeps parititoning
+the first list, but it can just filter down the others (since you can only lie once). This repeats till there
+is one word left.
