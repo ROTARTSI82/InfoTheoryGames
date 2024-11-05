@@ -1,60 +1,47 @@
+{-# LANGUAGE TupleSections #-}
+import qualified Data.HashMap.Strict as M
+import Data.List (sortOn)
+import Data.Ord (Down (..))
 import Text.Regex.Posix
-import Data.List
 
-(.:) :: (b -> c) -> (a1 -> a2 -> b) -> a1 -> a2 -> c
-(.:) = (.) . (.)
+mask :: Char -> [String] -> [String]
+mask guess wordList = [[if letter == guess then '1' else '0' | letter <- word] | word <- wordList]
 
-matches :: String -> [String] -> [Bool]
-matches = map . flip (=~)
+count :: [String] -> [Double]
+count = map snd . M.toList . M.fromListWith (+) . map (, 1)
 
-count :: [Bool] -> Double
-count = fromIntegral . length . filter id
+entropy :: Char -> [String] -> Double
+entropy guess wordList = 
+    (0 -) . sum $ map (\p -> p * logBase 2 p) ps
+    where 
+        counts = count $ mask guess wordList
+        ps = map (/sum counts) counts
 
-matchesCount :: String -> [String] -> Double
-matchesCount = count .: matches
-
-combs :: String -> Char -> [String]
-combs [] _ = []
-combs [x] y = 
-    if x == '.' then ["[^" ++ [y] ++ "]", [y]]
-    else [[x]]
-combs (x:xs) y =
-    if x == '.' then [i ++ j | i <- ["[^" ++ [y] ++ "]", [y]], j <- combs xs y]
-    else map (x:) (combs xs y)
-
-pos :: [String] -> [String] -> [Double]
-pos wordList = map (\word -> matchesCount word wordList)
-
-entropy :: String -> Char -> [String] -> Double
-entropy currentWord charGuess wordList = 
-    negate . sum $ filter (not . isNaN) (zipWith (*) p (map (logBase 2) p))
-    where p = map (/ matchesCount currentWord wordList) (pos wordList (combs currentWord charGuess))
-
-entropyMax :: String -> String -> [String] -> Maybe Char
-entropyMax currentWord guessedChars wordList = 
-    if maximum h == 0 then Nothing
-    else case elemIndex (maximum h) h of
-        Just i -> Just ((['a'..'z'] \\ guessedChars) !! i)
-        Nothing -> error "Not Found?"
-    where h = [entropy currentWord charGuess wordList | charGuess <- ['a'..'z'] \\ guessedChars]
+entropyMax :: [String] -> Maybe Char
+entropyMax wordList = 
+    case head t of
+        (_, 0) -> Nothing
+        (letter, _) -> Just letter
+    where t = sortOn (Down . snd) [(letter, entropy letter wordList) | letter <- ['a'..'z']]
 
 cut :: Char -> [String] -> String -> [String]
 cut charGuess wordList currentWord = 
-    filter (flip (=~) reg) wordList
-    where reg = concat $ map (\c -> if c == '.' then "[^" ++ [charGuess] ++ "]" else [c]) currentWord
+    filter  (=~ reg) wordList
+    where reg = concatMap (\c -> if c == '.' then "[^" ++ [charGuess] ++ "]" else [c]) currentWord
     
-ask :: String -> String -> [String] -> IO ()
-ask currentWord guessedChars wordList = 
-    case entropyMax currentWord guessedChars wordList of
-        Nothing -> putStrLn ("Solved: " ++ (filter (flip (=~) currentWord) wordList) !! 0)
+ask :: String -> [String] -> IO ()
+ask currentWord wordList = do
+    -- print $ length wordList
+    -- print wordList
+    case entropyMax wordList of
+        Nothing -> putStrLn ("Solved: " ++ head (filter (=~ currentWord) wordList))
         Just charGuess -> do
             putStrLn $ (:) charGuess "?"
-            getLine >>= flip ask (charGuess:guessedChars) <*> cut charGuess wordList
+            getLine >>= ask <*> cut charGuess wordList
 
 main :: IO ()
 main = do
     word <- getLine
     contents <- readFile "words.txt"
     let wordList = filter ((== length word) . length) $ words contents
-    print (length wordList)
-    ask word "" wordList
+    ask word wordList

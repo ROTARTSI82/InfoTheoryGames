@@ -21,3 +21,8 @@ Runs recursively until word is found. Still needs list of words from somewhere.
 
 * Complete! List of words added. Works well for short words, but first guess takes like 3x longer for
 each new character added.
+
+## 0.2.0.0 -- 2024-11-04
+
+* Huge! (and I mean huge) optimizations. Like crazy fast now (relative to before). It probably can
+be optimized more, but it's probably better to first implement word frequency + lying.
