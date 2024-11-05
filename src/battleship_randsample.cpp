@@ -23,9 +23,6 @@ struct BSRandSample {
     std::atomic_uint32_t total;
     std::atomic_uint32_t its;
 
-    // std::mutex mtx;
-    // std::unordered_set<uint64_t> found;
-
     std::mutex impossible_mtx;
     std::unordered_set<uint64_t> impossible;
 
@@ -75,7 +72,6 @@ struct BSRandSample {
 
             grid_t cand_horiz = REQ_MASKS[ship][0][ship][0] & ~misses; 
             grid_t cand_vert = REQ_MASKS[ship][0][ship][1] & ~misses;
-            // REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
             for (int i = 0; i < ship_idx; i++) {
                 int idx = ship_perm[i];
                 int sq = conf.ships[idx];
@@ -86,9 +82,6 @@ struct BSRandSample {
             int nhoriz = popcnt(cand_horiz);
 
             RAND_PERM(board_seq, nhoriz + popcnt(cand_vert), rng);
-            // std::cout << std::endl << "size = " << board_seq.size() << std::endl;
-            // dump_board(cand_vert, true);
-            // dump_board(cand_horiz, true);
 
             int size = SHIP_SIZES[ship];
             for (int trial : board_seq) {
@@ -98,23 +91,7 @@ struct BSRandSample {
                 int x = sq % BOARD_WIDTH;
                 int y = sq / BOARD_WIDTH;
 
-                // if (((!vert) && x + size > BOARD_WIDTH)
-                //     || (vert && y + size > BOARD_HEIGHT)) {// off board 
-                // debug_dump_and_abort:
-                //     std::cout << "ship size = " << size << '\n';
-                //     dump_board(cand_vert, true);
-                //     std::cout << "vertical\n";
-                //     dump_board(cand_horiz, true);
-                //     std::cout << "working\n";
-                //     dump_board(working, true);
-                //     assert(false);
-                //     continue;
-                // }
-
                 mask = mk_ship_mask(size, vert, x, y);
-
-                // if (working & mask)
-                //     goto debug_dump_and_abort;
                 if (misses & mask)
                     continue; // blocked by a "miss"
                 if (ship == ship_perm.back()) {
@@ -128,9 +105,6 @@ struct BSRandSample {
                 assert(popcnt(working | mask) == popcnt(working) + popcnt(mask));
                 working |= mask;
                 conf.ships[ship] = (vert?BOARD_SIZE:0) + y*BOARD_WIDTH + x;
-                // conf.set_ship_vert(ship, vert);
-                // conf.ships[ship].r = y;
-                // conf.ships[ship].c = x;
                 goto succ;
             }
 
@@ -155,18 +129,6 @@ struct BSRandSample {
             working &= (working - 1);
         }
         return 1;
-
-        // std::lock_guard<std::mutex> lg(mtx);
-        // if (found.insert(conf.to_bytes()).second) {
-        //     total++;
-        //     while (working) {
-        //         counts[countr_zero(working)]++;
-        //         working &= (working - 1);
-        //     }
-        //     return 1;
-        // }
-
-        // return 2;
     }
 
     void launch_multithread(uint32_t max) {

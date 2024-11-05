@@ -85,11 +85,11 @@ void test_randsample() {
 
     // return;
 
-    int its = 0;
-    while (++its && e.total < 4096)
-        std::cout << e.try_random(rng) << std::flush;
+    // e.its = 0;
+    // while (++e.its && e.total < 4096)
+    //     std::cout << e.try_random(rng) << std::flush;
 
-    // e.launch_multithread(4096 * 128);
+    e.launch_multithread(4096 * 128);
 
     std::cout << '\n';
 

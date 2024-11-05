@@ -5,3 +5,6 @@ theory-paper/
 !theory-paper/main.pdf
 !theory-paper/main.tex
 !theory-paper/preamb.tex
+
+release/
+**/.DS_Store
