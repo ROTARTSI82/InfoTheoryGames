@@ -85,11 +85,11 @@ void test_randsample() {
 
     // return;
 
-    // int its = 0;
-    // while (++its && e.total < 4096)
-    //     std::cout << e.try_random(rng) << std::flush;
+    int its = 0;
+    while (++its && e.total < 4096)
+        std::cout << e.try_random(rng) << std::flush;
 
-    e.launch_multithread(4096 * 128);
+    // e.launch_multithread(4096 * 128);
 
     std::cout << '\n';
 
@@ -111,6 +111,15 @@ void test_randsample() {
 
 int main() {
     init_req_masks();
+
+    // for (int i = 0; i < NUM_SHIPS; i++)
+    //     for (int j = 0; j < BOARD_SIZE * 2; j++)
+    //         for (int k = 0; k < NUM_SHIPS * 2; k++) {
+    //             std::cout << "\ngiven " << i << " at " << j << " valid cand for " << k << '\n';
+    //             dump_board(REQ_MASKS[i][j][k%NUM_SHIPS][k/NUM_SHIPS], true);
+    //         }
+
+    // return 0;
     std::cout << "config size = " << sizeof(BSConfig2) << '\n';
     test_randsample();
 }

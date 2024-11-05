@@ -25,15 +25,15 @@ inline constexpr grid_t mk_mask(int n) {
     return static_cast<grid_t>(1) << static_cast<grid_t>(n);
 }
 
-inline constexpr grid_t mk_mask(int r, int c) {
-    return mk_mask(r * BOARD_WIDTH + c);
+inline constexpr grid_t mk_mask(int x, int y) {
+    return mk_mask(y * BOARD_WIDTH + x);
 }
 
 template <bool VERT>
 inline constexpr grid_t lmask(int n) {
     grid_t ret = 0;
     for (int i = 0; i < n; i++)
-        ret |= VERT ? mk_mask(i,0) : mk_mask(i);
+        ret |= VERT ? mk_mask(0,i) : mk_mask(i);
     return ret;
 }
 
@@ -41,7 +41,7 @@ void dump_board(grid_t grid, bool full = false) {
     for (int y = 0; y < (full ? 13 : BOARD_HEIGHT); y++) {
         std::cout << "\n" << y << "\t";
         for (int x = 0; x < BOARD_WIDTH; x++)
-            std::cout << ((grid & mk_mask(y, x)) ? 'x' : '.');
+            std::cout << ((grid & mk_mask(x, y)) ? 'x' : '.');
     }
     std::cout << '\n';
 }
@@ -64,7 +64,7 @@ inline constexpr grid_t mk_ship_mask(int size, bool vert, int x, int y) {
 // there exists a ship i at square p. 
 // REQ_MASK[i][0][i][vert] = initial starting point for ship type i given boundaries.
 // this has huge wastage as ships 2 and 3 are identical.
-grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {};
+grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {{{{0}}}};
 constexpr void init_req_masks() {
     for (int base_ship = 0; base_ship < NUM_SHIPS; base_ship++) {
         int base_size = SHIP_SIZES[base_ship];

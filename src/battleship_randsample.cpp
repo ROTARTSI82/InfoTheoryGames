@@ -77,14 +77,18 @@ struct BSRandSample {
             grid_t cand_vert = REQ_MASKS[ship][0][ship][1] & ~misses;
             // REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
             for (int i = 0; i < ship_idx; i++) {
-                int sq = conf.ships[i];
-                cand_horiz &= REQ_MASKS[i][sq][ship][0];
-                cand_vert &= REQ_MASKS[i][sq][ship][1];
+                int idx = ship_perm[i];
+                int sq = conf.ships[idx];
+                cand_horiz &= REQ_MASKS[idx][sq][ship][0];
+                cand_vert &= REQ_MASKS[idx][sq][ship][1];
             }
 
             int nhoriz = popcnt(cand_horiz);
 
             RAND_PERM(board_seq, nhoriz + popcnt(cand_vert), rng);
+            // std::cout << std::endl << "size = " << board_seq.size() << std::endl;
+            // dump_board(cand_vert, true);
+            // dump_board(cand_horiz, true);
 
             int size = SHIP_SIZES[ship];
             for (int trial : board_seq) {
@@ -94,12 +98,25 @@ struct BSRandSample {
                 int x = sq % BOARD_WIDTH;
                 int y = sq / BOARD_WIDTH;
 
-                if (((!vert) && x + size > BOARD_WIDTH)
-                    || (vert && y + size > BOARD_HEIGHT)) // off board 
-                    continue;
+                // if (((!vert) && x + size > BOARD_WIDTH)
+                //     || (vert && y + size > BOARD_HEIGHT)) {// off board 
+                // debug_dump_and_abort:
+                //     std::cout << "ship size = " << size << '\n';
+                //     dump_board(cand_vert, true);
+                //     std::cout << "vertical\n";
+                //     dump_board(cand_horiz, true);
+                //     std::cout << "working\n";
+                //     dump_board(working, true);
+                //     assert(false);
+                //     continue;
+                // }
+
                 mask = mk_ship_mask(size, vert, x, y);
-                if (working & mask || misses & mask)
-                    continue; // blocked by another ship or "miss"
+
+                // if (working & mask)
+                //     goto debug_dump_and_abort;
+                if (misses & mask)
+                    continue; // blocked by a "miss"
                 if (ship == ship_perm.back()) {
                     if ((~(working | mask)) & hits)
                         continue; // we placed the last ship without satisfying all hits
