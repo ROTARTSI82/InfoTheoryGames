@@ -26,3 +26,7 @@ each new character added.
 
 * Huge! (and I mean huge) optimizations. Like crazy fast now (relative to before). It probably can
 be optimized more, but it's probably better to first implement word frequency + lying.
+
+## 0.2.0.1 -- 2024-11-04
+
+* Small edits.

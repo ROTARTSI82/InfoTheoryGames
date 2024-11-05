@@ -26,7 +26,7 @@ entropyMax wordList =
 
 cut :: Char -> [String] -> String -> [String]
 cut charGuess wordList currentWord = 
-    filter  (=~ reg) wordList
+    filter (=~ reg) wordList
     where reg = concatMap (\c -> if c == '.' then "[^" ++ [charGuess] ++ "]" else [c]) currentWord
     
 ask :: String -> [String] -> IO ()
@@ -34,9 +34,9 @@ ask currentWord wordList = do
     -- print $ length wordList
     -- print wordList
     case entropyMax wordList of
-        Nothing -> putStrLn ("Solved: " ++ head (filter (=~ currentWord) wordList))
+        Nothing -> putStrLn $ (++) "Solved: " $ head $ filter (=~ currentWord) wordList
         Just charGuess -> do
-            putStrLn $ (:) charGuess "?"
+            putStrLn $ charGuess:"?"
             getLine >>= ask <*> cut charGuess wordList
 
 main :: IO ()
