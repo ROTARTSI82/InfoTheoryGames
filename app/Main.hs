@@ -16,22 +16,23 @@ type Turn = Int
 
 type WordFreq = (Word, Int)
 type FreqTable = [WordFreq]
-type GameNode = (FreqTable, Probability)
-type GameTree = [GameNode]
+type WordNode = (FreqTable, Probability)
+type WordTree = [WordNode]
+type PhraseTree = [WordTree]
 
 
 {- 
  - This function iterates through each letter in each word of the tree, doing a crude AND 
  - operation with the letter and a given letter. For example, the word "bat" with the 
- - letter 'a' yields the pattern "010". The function also flattens the game tree into a 
- - singleton, since the specific game node does not matter for its usage. However, the
+ - letter 'a' yields the pattern "010". The function also flattens the word tree into a 
+ - singleton, since the specific word node does not matter for its usage. However, the
  - "probability" that word was chosen does matter, so it computes the probability by
- - multilplying the word frequency by the probability corresponding to the game node it is 
+ - multilplying the word frequency by the probability corresponding to the word node it is 
  - in.
  -}
-mask :: Letter -> GameTree -> [(Pattern, Probability)]
-mask guess wordList = 
-    concat [[([if letter == guess then '1' else '0' | letter <- fst word], 
+mask :: Letter -> WordTree -> [(Pattern, Probability)]
+mask guess wordList =
+    concat [[([if letter == guess then '1' else '0' | letter <- fst word],
     fromIntegral (snd word) * snd list) | word <- fst list] | list <- wordList]
 
 {-
@@ -48,7 +49,7 @@ count = map snd . M.toList . M.fromListWith (+)
  - character. It uses `mask` and `count` to generate a list of "probabilities". It then 
  - sums over plog2p, after normalizing of course.
  -}
-entropy :: Letter -> GameTree -> Entropy
+entropy :: Letter -> WordTree -> Entropy
 entropy charGuess wordList =
     (0 -) . sum $ map (\p -> p * logBase 2 p) ps
     where
@@ -61,24 +62,24 @@ entropy charGuess wordList =
  - gained. It returns the letter that yields the highest entropy, or nothing if the 
  - maximum entropy is 0 (implying the game has been solved).
  -}
-entropyMax :: GameTree -> Maybe Letter
-entropyMax wordList =
+entropyMax :: PhraseTree -> Maybe Letter
+entropyMax gameTree =
     case head t of
         (_, 0) -> Nothing
         (letter, _) -> Just letter
-    where t = sortOn (Down . snd) [(letter, entropy letter wordList) | letter <- ['a'..'z']]
+    where t = sortOn (Down . snd) [(letter, sum $ map (entropy letter) gameTree) | letter <- ['a'..'z']]
 
 {-
  - This function is just a pdf of which turn the player lies on.
  -}
-lieDist :: Int -> Probability
+lieDist :: Turn -> Probability
 lieDist = (**) 0.25 . fromIntegral
 
 {-
- - This function removes any word in the game tree that does not fulfill the given pattern.
- - It is only ever used on game nodes where the player has already lied.
+ - This function removes any word in the word tree that does not fulfill the given pattern.
+ - It is only ever used on word nodes where the player has already lied.
  -}
-cutFilter :: Pattern -> GameTree -> GameTree
+cutFilter :: Pattern -> WordTree -> WordTree
 cutFilter reg = map $ B.first $ filter $ flip (=~) reg . fst
 
 {-
@@ -86,9 +87,9 @@ cutFilter reg = map $ B.first $ filter $ flip (=~) reg . fst
  - player has inputted an empty pattern. In this scenario, the current list of words can be
  - divided into two sections: the player is telling the truth (the guessed letter is not in
  - the word), or the player is lying (the guessed letter appears somewhere in the word). The
- - function returns these two possibilities in the form of a game tree.
+ - function returns these two possibilities in the form of a word tree.
  -}
-cutPartition1 :: Pattern -> GameNode -> Turn -> GameTree
+cutPartition1 :: Pattern -> WordNode -> Turn -> WordTree
 cutPartition1 reg wordList turn =
     [(fst temp, snd wordList - lieDist turn), (snd temp, lieDist turn)]
     where temp = partition (\word -> fst word =~ reg) $ fst wordList
@@ -98,27 +99,37 @@ cutPartition1 reg wordList turn =
  - player has inputted a non-empty pattern. In this scenario, the current list of words can
  - be divided into two sections: the player is telling the truth (the guessed letter appears
  - at the specified location), or the player is lying (the letter does not appear in the 
- - word). The function returns these two possibilities in the form of a game tree.
+ - word). The function returns these two possibilities in the form of a word tree.
  -}
-cutPartition2 :: Letter -> Word -> GameNode -> Turn -> GameTree
-cutPartition2 charGuess reg wordList turn = 
+cutPartition2 :: Letter -> Pattern -> WordNode -> Turn -> WordTree
+cutPartition2 charGuess reg wordList turn =
     [(filter (flip (=~) reg . fst) $ fst wordList, snd wordList - lieDist turn),
     (filter (notElem charGuess . fst) $ fst wordList, lieDist turn)]
 
 {-
  - This function is the master game tree filter. Depending on the inputted pattern, it calls
- - either `cutPartition1` or `cutPartition2` on the first game node (the player has not lied).
- - It calls `cutFilter` on the rest of the game nodes (the player has already lied). By doing
+ - either `cutPartition1` or `cutPartition2` on the first word node (the player has not lied).
+ - It calls `cutFilter` on the rest of the word nodes (the player has already lied). By doing
  - so, it cuts out as many words as possible from the list of candidates, while keeping track
- - of the current game state.
+ - of the current word state.
  -}
-cut :: Letter -> Word -> GameTree -> Turn -> GameTree
-cut charGuess currentWord wordList turn =
-    (if all ('.' ==) currentWord
+cut :: Letter -> Pattern -> PhraseTree -> Turn -> PhraseTree
+cut charGuess pattern gameTree turn =
+    zipWith3
+    (\wordList reg pat -> (if all ('.' ==) pat
         then cutPartition1 reg (head wordList) turn
         else cutPartition2 charGuess reg (head wordList) turn)
-     ++ cutFilter reg (tail wordList)
-    where reg = concatMap (\c -> if c == charGuess then [charGuess] else "[^" ++ [charGuess] ++ "]") currentWord
+     ++ cutFilter reg (tail wordList)) gameTree regs (words pattern)
+    where regs = map (concatMap (\c -> if c == charGuess then [charGuess] else "[^" ++ [charGuess] ++ "]")) (words pattern)
+
+{-
+ - [WordNode] --> [(FreqTable, Probability)] --> [([WordFreq], Probability)] --> [([(Word, Int)], Probability)]
+ -}
+mostLikely :: WordTree -> Word
+mostLikely wordTree = fst $ head simpleTable
+    where 
+        simpleTable = sortOn (Down . snd) $ M.toList $ M.fromListWith (+) table
+        table = concat [map (\freq -> (fst freq, fromIntegral (snd freq) * snd wordNode)) $ fst wordNode | wordNode <- wordTree]
 
 {-
  - This function is the main game controller. It uses `entropyMax` to determine the best letter
@@ -126,14 +137,15 @@ cut charGuess currentWord wordList turn =
  - It recursively calls itself until `entropyMax` returns nothing. At that point, it knows that
  - the game is solved, and it prints out "Solved" + the first word it finds in the game tree.
  -}
-ask :: GameTree -> Turn -> IO ()
-ask wordList turn = do
-    case entropyMax wordList of
-        Nothing -> putStrLn $ (++) "Solved: " $ fst $ head $ concatMap fst (M.toList $ M.fromListWith (+) wordList)
+ask :: PhraseTree -> Turn -> IO ()
+ask gameTree turn = do
+    print (gameTree !! 2)
+    putStrLn $ (++) "Most likely: " $ unwords $ map mostLikely gameTree
+    case entropyMax gameTree of
+        Nothing -> putStrLn $ (++) "Solved: " $ unwords $ map fst $ concatMap (M.toList . M.fromListWith (+) . concatMap fst) gameTree
         Just charGuess -> do
             putStrLn $ charGuess:"?"
-            pat <- getLine
-            ask (cut charGuess pat wordList turn) (turn + 1)
+            getLine >>= \pattern -> ask (cut charGuess pattern gameTree turn) (turn + 1)
 
 {- This function merely parses a line of csv file data into a word/frequency pair. For example,
  - "word, 1000" is returned as ("word", 1000).
@@ -150,6 +162,6 @@ main :: IO ()
 main = do
     contents <- readFile "wordFreq2.csv"
     let wordList = map parse $ take 50000 $ words contents -- Reads the first 50000 words
-    word <- getLine
-    let newList = filter ((== length word) . length . fst) wordList -- Filters by length
-    ask [(newList, 1)] 1
+    phrase <- getLine
+    let newList = map (\word -> filter ((== length word) . length . fst) wordList) (words phrase) -- Filters by length
+    ask [[(possibleWords, 1)] | possibleWords <- newList] 1

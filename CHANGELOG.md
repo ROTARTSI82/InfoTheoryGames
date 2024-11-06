@@ -53,3 +53,10 @@ is one word left.
 
 * Apparently lies are black and white, no partial lying (misplacing letters). The program now accounts for
 this. Type synonyms and comments were also added for better readability.
+
+## 0.5.0.0 -- 2024-11-05
+
+* Works for phrases (multiplt words, not just one). However, the program is under the assumption that the player
+can lie once for each word, not lie once for the phrase in total. I also added a mostLikely function that shows
+what the program thinks is the most likely combination of words. Of course, everything will need to get reworked
+to deal for one lie total.
