@@ -56,7 +56,11 @@ this. Type synonyms and comments were also added for better readability.
 
 ## 0.5.0.0 -- 2024-11-05
 
-* Works for phrases (multiplt words, not just one). However, the program is under the assumption that the player
+* Works for phrases (multiple words, not just one). However, the program is under the assumption that the player
 can lie once for each word, not lie once for the phrase in total. I also added a mostLikely function that shows
 what the program thinks is the most likely combination of words. Of course, everything will need to get reworked
 to deal for one lie total.
+
+## 0.6.0.0 -- 2024-11-06
+
+* Phrases fixed! Hopfully works as intended :pray:.
