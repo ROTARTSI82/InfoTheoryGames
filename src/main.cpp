@@ -2,7 +2,7 @@
 #include "battleship_enum.cpp"
 #include "battleship_randsample.cpp"
 #include <fstream>
-
+#include "gui.cpp"
 
 void test_enum() {
     std::cout << "atomic int = " << sizeof(std::atomic_uint32_t) << '\n';
@@ -121,5 +121,6 @@ int main() {
 
     // return 0;
     std::cout << "config size = " << sizeof(BSConfig2) << '\n';
-    test_randsample();
+    // test_randsample();
+    run_battleship();
 }

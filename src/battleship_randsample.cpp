@@ -7,7 +7,7 @@
         std::shuffle(vec.begin(), vec.end(), rng);
 
 
-inline uint64_t ship_perm_to_int(const std::vector<int> &perm) {
+inline constexpr uint64_t ship_perm_to_int(const std::vector<int> &perm) {
     uint64_t ret = 0;
     for (size_t i = 0; i < perm.size(); i++)
         ret |= (1 << (i*NUM_SHIPS + perm[i]));
@@ -141,7 +141,7 @@ struct BSRandSample {
                 while (total < max) {
                     try_random(rng);
                     its++;
-                    if (its % 4096 == 0)
+                    if (its % (4096*8) == 0)
                         std::cout << "prog = " << total << " / " << its << std::endl;
                 }
             });
