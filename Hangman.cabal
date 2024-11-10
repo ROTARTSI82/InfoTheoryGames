@@ -61,7 +61,7 @@ executable Hangman
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:    Graphics
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -72,7 +72,8 @@ executable Hangman
         regex-posix,
         unordered-containers,
         split,
-        hashable
+        hashable,
+        gtk3
 
     -- Directories containing source files.
     hs-source-dirs:   app

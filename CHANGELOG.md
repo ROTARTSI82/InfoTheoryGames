@@ -61,6 +61,13 @@ can lie once for each word, not lie once for the phrase in total. I also added a
 what the program thinks is the most likely combination of words. Of course, everything will need to get reworked
 to deal for one lie total.
 
-## 0.6.0.0 -- 2024-11-06
+## 0.5.1.0 -- 2024-11-06
 
 * Phrases fixed! Hopfully works as intended :pray:.
+
+## 0.5.2.0 -- 2024-11-06
+
+* A ton of random fixes? I don't even remember all of them anymore honestly. I think there was an issue with the
+probabilistic lie distribution that I fixed. Some Haskell style guide editing, too. I think the biggest change is
+that I started implementing graphics. Not done yet, just like the starting screen where you enter the phrase. I just
+need to push this before I mess everything up.
