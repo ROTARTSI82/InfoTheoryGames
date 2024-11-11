@@ -39,8 +39,12 @@ struct BSRandSample {
     void random_populate_hit_anchors(std::mt19937_64 &rng) {
         int sample_space = popcnt(hits);
         std::uniform_int_distribution<std::mt19937_64::result_type> dist(0,sample_space-1);
+        for (int i = 0; i < NUM_SHIPS - 1; i++)
+            hit_anchors[i] = 0;
 
         for (int i = 0; i < NUM_SHIPS - 1; i++) {
+            if (i >= sample_space)
+                break;
             grid_t prev = i > 0 ? hit_anchors[i-1] : 0;
             hit_anchors[i] = prev;
             grid_t cand = 0;

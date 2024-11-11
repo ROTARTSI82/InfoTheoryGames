@@ -20,6 +20,9 @@
 #include "imgui_impl_sdlrenderer2.h"
 #include <stdio.h>
 #include <SDL.h>
+#include <cstdlib>
+
+#include "battleship_randsample.cpp"
 
 
 // Main code
@@ -93,6 +96,14 @@ int run_battleship()
 
     // Main loop
     bool done = false;
+
+    grid_t occ_ships[NUM_SHIPS] = {0};
+    BSRandSample sampler{};
+    int maxIt = 0;
+    float maxprob = 1.0;
+    int maxprob_sq = 0;
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
     while (!done)
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -129,21 +140,89 @@ int run_battleship()
             static float f = 0.0f;
             static int counter = 0;
 
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+            ImGui::Begin("Battleship!");
+            static int to_place = 0;
+            static bool placemode = true;
+            static bool place_vert = false;
 
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
+            ImGui::Text("Ship to place (by size)");
+            constexpr std::array<std::string, NUM_SHIPS> names = {"Carrier ", "Battleship ", "Destroyer ", "Submarine ", "Patrol Boat "}; 
+            constexpr std::array<ImColor, NUM_SHIPS> ship_colors = {ImColor(255, 255, 0), ImColor(0,255,0), ImColor(0,0,255), ImColor(0,255,255),ImColor(255,0,255)};
+            ImColor empty(128, 128, 128);
+            for (int i = 0; i < NUM_SHIPS; i++) {
+                ImGui::PushID(i);
+                std::string s = " (" + std::to_string(SHIP_SIZES[i]) + ")";
+                ImGui::RadioButton(names[i].c_str(), &to_place, i);
+                ImGui::SameLine();
+                ImGui::TextColored(ship_colors[i].Value, "%s", s.c_str());
+                if (i < NUM_SHIPS - 1) ImGui::SameLine();
+                ImGui::PopID();
+            }
 
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+            ImGui::Separator();
 
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
+            ImGui::Checkbox("Ship Placing Mode", &placemode);
+            ImGui::Checkbox("Place Vertically", &place_vert);
+
+            ImGui::SliderInt("Num Iterations", &maxIt, 1, 4096*128);
+
+            if (ImGui::Button("Next Move")) {
+                grid_t totocc = 0;
+                for (int i = 0; i < NUM_SHIPS; i++)
+                    totocc |= occ_ships[i];
+                if (mk_mask(maxprob_sq) & totocc)
+                    sampler.hits |= mk_mask(maxprob_sq);
+                else
+                    sampler.misses |= mk_mask(maxprob_sq);
+                std::cout << "nextMove\n";
+            }
             ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
+            if (ImGui::Button("Calculate Random Sample")) {
+                sampler.clear();
+                sampler.random_populate_hit_anchors(rng);
+                sampler.launch_multithread(maxIt);
+                maxprob = 0;
+                for (int s = 0; s < BOARD_SIZE; s++) {
+                    float p = sampler.counts[s].load() / (float) sampler.total.load();
+                    if (p > maxprob && p < 1) {
+                        maxprob_sq = s;
+                        maxprob = p;
+                    }
+                }
+                std::cout << "randsample\n";
+            }
 
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::Text("Found/Iterations: %i/%i", sampler.total.load(), sampler.its.load());
+
+            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame;
+            if (ImGui::BeginTable("Battleship", BOARD_WIDTH, flags)) {
+                for (int sq = 0; sq < BOARD_SIZE; sq++) {
+                    ImGui::PushID(sq);
+                    ImGui::TableNextColumn();
+                    float prob = sampler.counts[sq].load() / (float) sampler.total.load();
+                    ImVec4 col = ImVec4(prob/maxprob, 1.0 - prob/maxprob, 0.0, 1.0);
+                    ImGui::TextColored(col, "Prob: %f", prob);
+
+                    for (int shp = 0; shp < NUM_SHIPS; shp++) {
+                        if (mk_mask(sq) & occ_ships[shp]) {
+                            ImGui::TextColored(ship_colors[shp].Value, "%s", names[shp].c_str());
+                            break;
+                        }
+                    }
+                    if (mk_mask(sq) & sampler.hits)
+                            ImGui::TextColored(ImVec4(1,0,0,1), "HIT");
+                    if (mk_mask(sq) & sampler.misses)
+                        ImGui::TextColored(empty.Value, "MISS");
+
+                    if (placemode && ImGui::Button("place")) {
+                        std::cout << "place " << sq << '\n';
+                        occ_ships[to_place] = mk_ship_mask(SHIP_SIZES[to_place], place_vert, sq % BOARD_WIDTH, sq / BOARD_WIDTH);
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+
             ImGui::End();
         }
 
