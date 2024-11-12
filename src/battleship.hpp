@@ -13,7 +13,6 @@
 #include <algorithm>
 
 using grid_t = __uint128_t;
-using u128 = grid_t;
 
 constexpr int SHIP_SIZES[] = {5,4,3,3,2};
 constexpr int NUM_SHIPS = 5;
@@ -37,7 +36,7 @@ inline constexpr grid_t lmask(int n) {
     return ret;
 }
 
-void dump_board(grid_t grid, bool full = false) {
+inline void dump_board(grid_t grid, bool full = false) {
     for (int y = 0; y < (full ? 13 : BOARD_HEIGHT); y++) {
         std::cout << "\n" << y << "\t";
         for (int x = 0; x < BOARD_WIDTH; x++)
@@ -64,7 +63,7 @@ inline constexpr grid_t mk_ship_mask(int size, bool vert, int x, int y) {
 // there exists a ship i at square p. 
 // REQ_MASK[i][0][i][vert] = initial starting point for ship type i given boundaries.
 // this has huge wastage as ships 2 and 3 are identical.
-grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {{{{0}}}};
+extern grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
 constexpr void init_req_masks() {
     for (int base_ship = 0; base_ship < NUM_SHIPS; base_ship++) {
         int base_size = SHIP_SIZES[base_ship];
@@ -106,12 +105,14 @@ constexpr void init_req_masks() {
 }
 
 inline constexpr int popcnt(grid_t g) {
+//    return std::popcount(g);
     uint64_t lo = g;
     uint64_t hi = (g >> static_cast<grid_t>(64));
     return std::popcount(lo) + std::popcount(hi);
 }
 
 inline constexpr int countr_zero(grid_t g) {
+//    return std::countr_zero(g);
     uint64_t lo = g;
     uint64_t hi = (g >> static_cast<grid_t>(64));
     return lo ? std::countr_zero(lo) : 64 + std::countr_zero(hi);
@@ -152,5 +153,41 @@ struct BSConfig2 {
             ships[s] += BOARD_SIZE;
     }
 };
+
+struct BSSampler {
+    grid_t hits = 0;
+    grid_t misses = 0;
+    grid_t hit_anchors[4] = {0};
+
+    uint32_t counts[BOARD_SIZE];
+    uint32_t total;
+    uint32_t its;
+
+    std::mutex impossible_mtx;
+    std::unordered_set<uint64_t> impossible;
+
+    inline void clear() {
+        impossible.clear();
+        total = 0;
+        its = 0;
+        for (int x = 0; x < BOARD_SIZE; x++)
+            counts[x] = 0;
+    }
+
+    void enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl);
+    void multithread_enum();
+
+    // copied from battleship_enum.
+    void random_populate_hit_anchors(std::mt19937_64 &rng);
+
+    // returns 1 if the permuation found something
+    // 0 if it was impossible.
+    // 2 if we found a duplicate.
+    // 3 if we failed to satisfy all hits or it was impossible
+    int try_random(std::mt19937_64 &rng);
+
+    void multithread_randsample(uint32_t max);
+};
+
 
 #endif

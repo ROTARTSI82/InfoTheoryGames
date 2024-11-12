@@ -22,7 +22,7 @@
 #include <SDL.h>
 #include <cstdlib>
 
-#include "battleship_randsample.cpp"
+#include "battleship.hpp"
 
 
 // Main code
@@ -98,7 +98,7 @@ int run_battleship()
     bool done = false;
 
     grid_t occ_ships[NUM_SHIPS] = {0};
-    BSRandSample sampler{};
+    BSSampler sampler{};
     int maxIt = 0;
     float maxprob = 1.0;
     int maxprob_sq = 0;
@@ -180,10 +180,10 @@ int run_battleship()
             if (ImGui::Button("Calculate Random Sample")) {
                 sampler.clear();
                 sampler.random_populate_hit_anchors(rng);
-                sampler.launch_multithread(maxIt);
+                sampler.multithread_randsample(maxIt);
                 maxprob = 0;
                 for (int s = 0; s < BOARD_SIZE; s++) {
-                    float p = sampler.counts[s].load() / (float) sampler.total.load();
+                    float p = sampler.counts[s] / (float) sampler.total;
                     if (p > maxprob && p < 1) {
                         maxprob_sq = s;
                         maxprob = p;
@@ -192,14 +192,14 @@ int run_battleship()
                 std::cout << "randsample\n";
             }
 
-            ImGui::Text("Found/Iterations: %i/%i", sampler.total.load(), sampler.its.load());
+            ImGui::Text("Found/Iterations: %i/%i", sampler.total, sampler.its);
 
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame;
             if (ImGui::BeginTable("Battleship", BOARD_WIDTH, flags)) {
                 for (int sq = 0; sq < BOARD_SIZE; sq++) {
                     ImGui::PushID(sq);
                     ImGui::TableNextColumn();
-                    float prob = sampler.counts[sq].load() / (float) sampler.total.load();
+                    float prob = sampler.counts[sq] / (float) sampler.total;
                     ImVec4 col = ImVec4(prob/maxprob, 1.0 - prob/maxprob, 0.0, 1.0);
                     ImGui::TextColored(col, "Prob: %f", prob);
 

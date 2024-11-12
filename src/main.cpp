@@ -1,8 +1,6 @@
 
-#include "battleship_enum.cpp"
-#include "battleship_randsample.cpp"
 #include <fstream>
-#include "gui.cpp"
+#include "battleship.hpp"
 
 void test_enum() {
     std::cout << "atomic int = " << sizeof(std::atomic_uint32_t) << '\n';
@@ -12,7 +10,7 @@ void test_enum() {
 
     std::cout << sizeof(grid_t);
     std::cout << "\tHi\n";
-    StateEnumerator e{};
+    BSSampler e{};
     e.hits = e.misses = 0;
     // for (int i = 0; i < 5; i++)
     //     e.hits |= mk_mask(dist(rng));
@@ -20,32 +18,8 @@ void test_enum() {
     //     e.misses |= mk_mask(dist(rng));
     // e.random_populate_hit_anchors(rng);
     e.hit_anchors[0] = 0;
-    std::cout << "lf max_buckets=" << e.gamestates.max_bucket_count() 
-        << ", load=" << e.gamestates.max_load_factor() 
-        << ", size=" << e.gamestates.max_size() 
-        << ", buckets=" << e.gamestates.bucket_count() << '\n';
-    e.launch_multithread();
-    // e.enumerate(0, 0, -1);
-
-    // grid_t *convert = new grid_t[size];
-    // std::cout << "beginning conversion to vector\n";
-    // grid_t *cur = convert;
-    for (auto x : e.gamestates) {
-        // *cur++ = x;
-        dump_board(x);
-    }
-    // std::cout << "vectorized. writing to file\n";
-
-    // std::ofstream stream("out.bin", std::ios::binary);
-    // stream.write(reinterpret_cast<char *>(convert), sizeof(grid_t) * size);
-    // std::cout << "done\n";
-    // delete[] convert;
-
-    std::cout << "states: " << e.gamestates.size() << '\n';
-    std::cout << "lf buckets=" << e.gamestates.max_bucket_count() 
-              << ", load=" << e.gamestates.max_load_factor() 
-              << ", size=" << e.gamestates.max_size() 
-              << ", buckets=" << e.gamestates.bucket_count() << '\n';
+    // e.launch_multithread();
+    e.enumerate(0, BSConfig2{}, 0, -1);
 
     std::cout << " ==== [anchor] =====\n";
     dump_board(e.hit_anchors[0]);
@@ -53,6 +27,16 @@ void test_enum() {
     dump_board(e.hits);
     std::cout << "======= [ MISS ] =======\n";
     dump_board(e.misses);
+
+    std::cout << "count = " << e.total << '\n';
+
+    for (int y = 0; y < BOARD_HEIGHT; y++) {
+        for (int x = 0; x < BOARD_WIDTH; x++) {
+            float prob = e.counts[y * BOARD_WIDTH + x] / (float) e.total;
+            std::cout << '\t' << prob;
+        }
+        std::cout << '\n';
+    }
 }
 
 void test_randsample() {
@@ -60,7 +44,7 @@ void test_randsample() {
     std::mt19937_64 rng(dev());
     std::uniform_int_distribution<std::mt19937_64::result_type> dist(0,BOARD_SIZE-1); // distribution in range [1, 6]
 
-    BSRandSample e;
+    BSSampler e;
     e.clear();
     e.hits = e.misses = 1;
     while (e.hits & e.misses) {
@@ -89,7 +73,7 @@ void test_randsample() {
     // while (++e.its && e.total < 4096)
     //     std::cout << e.try_random(rng) << std::flush;
 
-    e.launch_multithread(4096 * 128);
+    e.multithread_randsample(4096 * 128);
 
     std::cout << '\n';
 
@@ -109,6 +93,8 @@ void test_randsample() {
     std::cout << "num impossible = " << e.impossible.size() << '\n';
 }
 
+int run_battleship();
+grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {{{{0}}}};
 int main() {
     init_req_masks();
 
@@ -122,5 +108,6 @@ int main() {
     // return 0;
     std::cout << "config size = " << sizeof(BSConfig2) << '\n';
     // test_randsample();
-    run_battleship();
+     run_battleship();
+//    test_enum();
 }
