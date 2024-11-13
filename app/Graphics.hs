@@ -1,4 +1,8 @@
-module Graphics (enterPhase) where
+module Graphics (
+                enterPhase
+              , gamePhase
+              , setGameDisplay)
+                where
 
 import Graphics.UI.Gtk
 import Control.Monad.IO.Class
@@ -12,8 +16,8 @@ renderWindow = do
                , windowDefaultHeight := 100 ]
     pure window
 
-renderDisplay :: IO Entry
-renderDisplay = do
+enterPhaseDisplay :: IO Entry
+enterPhaseDisplay = do
     display <- entryNew
     set display [ entryEditable := False
                 , entryXalign   := 0.5
@@ -38,11 +42,14 @@ parse raw =
     in
         map repl (second raw)
 
-enterPhase :: (String -> IO ()) -> IO ()
+enterPhase :: (Window -> String -> IO ()) -> IO ()
 enterPhase readyFunc = do
     _ <- initGUI
     window <- renderWindow
-    display <- renderDisplay
+    _ <- window `on` deleteEvent $ do
+        liftIO mainQuit
+        return False
+    display <- enterPhaseDisplay
 
     grid <- gridNew
     gridSetRowHomogeneous grid True
@@ -63,14 +70,35 @@ enterPhase readyFunc = do
 
     mkBtn "Ready" (do 
         containerRemove window grid
-        entryGetText display >>= readyFunc . parse
+        entryGetText display >>= readyFunc window . parse
         ) >>= attach 2 1 1 1
 
     containerAdd window grid
-
-    _ <- window `on` deleteEvent $ do
-        liftIO mainQuit
-        return False
-
     widgetShowAll window
     mainGUI
+
+
+gamePhaseDisplay :: IO Entry
+gamePhaseDisplay = do
+    display <- entryNew
+    set display [ entryEditable := False
+                , entryXalign   := 0.5
+                , entryText     := "" ]
+    pure display
+
+setGameDisplay :: Entry -> [String] -> IO ()
+setGameDisplay display datas = entrySetText display $ datas !! 0
+
+gamePhase :: Window -> IO Entry
+gamePhase window = do
+    display <- gamePhaseDisplay
+
+    grid <- gridNew
+    gridSetRowHomogeneous grid True
+    let attach x y w h item = gridAttach grid item x y w h
+
+    attach 0 0 3 1 display
+
+    containerAdd window grid
+    widgetShowAll window
+    pure display

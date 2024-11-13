@@ -6,16 +6,18 @@
 {-# HLINT ignore "Use first"              #-}
 
 
-import Data.List (sortOn, transpose)
-import Data.List.Split (splitOn)
-import Data.Ord (Down (..))
-import Prelude hiding (Word)
+import Control.Monad
+import Data.Hashable    (Hashable)
+import Data.List        (sortOn, transpose)
+import Data.List.Split  (splitOn)
+import Data.Ord         (Down (..))
+import Graphics.UI.Gtk  (Window, Entry)
 import Text.Regex.Posix ((=~))
-import Data.Hashable (Hashable)
+import Prelude          hiding (Word)
 
 import qualified Data.HashMap.Strict as M
 
-import Graphics (enterPhase)
+import Graphics (enterPhase, gamePhase, setGameDisplay)
 
 
 type Turn = Int
@@ -48,21 +50,19 @@ mask :: Letter -> Word -> Pattern
 mask letter word = [if character == letter then '1' else '0' | character <- word]
 
 maskMap :: Letter -> Game -> [[(Pattern, Probability)]]
-maskMap letter 
-    = map concat 
+maskMap letter
+    = map join 
     . transpose 
-    . map 
-        ( \gameState -> 
-            map (map ((mask letter ***) $ (snd gameState *) . fromIntegral)) $ fst gameState
-        )
+    . map ((map . map . (mask letter ***) . (. fromIntegral) . (*) . snd) <*> fst)
 
 entropy :: Letter -> Game -> Double
 entropy letter game =
     let
         counts = map (map snd . condense) (maskMap letter game)
-        ps     = map (\count -> map (/ sum count) count) counts
+        -- ps     = map (flip (/) . sum >>= map) counts
+        ps     = map (map =<< flip (/) . sum) counts
     in
-        sum $ map ((0 -) . sum . map (\p -> p * logBase 2 p)) ps
+        sum $ map ((0 -) . sum . map ((*) <*> logBase 2)) ps
 
 entropyMax :: Game -> Maybe (Letter, Double)
 entropyMax game =
@@ -76,7 +76,7 @@ lieDist :: Turn -> Probability
 lieDist _ = 0.25
 
 cutFilter :: [Pattern] -> Game -> Game
-cutFilter patterns = map (zipWith (\pattern -> filter (flip (=~) pattern . fst)) patterns *** id)
+cutFilter patterns = map (zipWith (filter . (. fst) . flip (=~)) patterns *** id)
 
 combs :: Int -> [Pattern]
 combs 1 = ["0", "1"]
@@ -97,7 +97,7 @@ cutPartitionEmpty letter gameNode turn =
 cutPartitionNotEmpty :: Letter -> [Pattern] -> GameNode -> Turn -> Game
 cutPartitionNotEmpty letter patterns gameNode turn =
     let
-        truth = zipWith (\pattern -> filter (flip (=~) pattern . fst)) patterns $ fst gameNode
+        truth = zipWith (filter . (. fst) . flip (=~)) patterns (fst gameNode)
         lie   = map (filter (notElem letter . fst)) $ fst gameNode
     in
         [(truth, snd gameNode * (1 - lieDist turn)), (lie, snd gameNode * lieDist turn)]
@@ -118,25 +118,26 @@ cut letter raw game turn =
 mostLikely :: Game -> [Word]
 mostLikely game = map (fst . head . sortOn (Down . snd) . condense . concat) $ transpose $ map fst game
 
-ask :: Game -> Turn -> IO ()
-ask game turn = do
+ask :: Game -> Turn -> Entry -> IO ()
+ask game turn display = do
     -- print game
-    putStrLn $ (++) "Most Likely: " $ unwords $ mostLikely game
+    setGameDisplay display [(++) "Most Likely: " $ unwords $ mostLikely game]
     case entropyMax game of
         Nothing -> putStrLn $ (++) "Solved: " $ unwords $ map fst $ concat $ fst $ last game
         Just (letter, ent) -> do
             putStrLn $ letter:"? Expected information: " ++ show ent
-            getLine >>= \pattern -> simplify (cut letter pattern game turn) `ask` (turn + 1)
+            -- getLine >>= \pattern -> ask (simplify (cut letter pattern game turn)) (turn + 1) display
 
 parse :: String -> WordFreq
 parse word = (head (splitOn "," word), read $ splitOn "," word !! 1)
 
-ready :: Pattern -> IO ()
-ready pattern = do
+ready :: Window -> Pattern -> IO ()
+ready window pattern = do
     contents <- readFile "wordFreq2.csv"
     let wordList = map parse $ take 50000 $ words contents
     let newList = map (\word -> filter ((== length word) . length . fst) wordList) (words pattern)
-    ask [(newList, 1)] 1
+    gamePhase window >>= ask [(newList, 1)] 1
+    
 
 main :: IO ()
 main = do

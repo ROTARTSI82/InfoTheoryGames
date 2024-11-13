@@ -73,7 +73,7 @@ executable Hangman
         unordered-containers,
         split,
         hashable,
-        gtk3
+        gtk3 ^>= 0.15.9
 
     -- Directories containing source files.
     hs-source-dirs:   app
