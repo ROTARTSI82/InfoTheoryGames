@@ -50,6 +50,7 @@
     <property name="title" translatable="yes">Hangman</property>
     <property name="default-width">500</property>
     <property name="default-height">250</property>
+    <property name="type-hint">popup-menu</property>
     <child>
       <!-- n-columns=3 n-rows=2 -->
       <object class="GtkGrid" id="enterGrid">
