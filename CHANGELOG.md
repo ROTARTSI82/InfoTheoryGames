@@ -71,3 +71,7 @@ to deal for one lie total.
 probabilistic lie distribution that I fixed. Some Haskell style guide editing, too. I think the biggest change is
 that I started implementing graphics. Not done yet, just like the starting screen where you enter the phrase. I just
 need to push this before I mess everything up.
+
+## 0.6.0.0 -- 2024-11-06
+
+* Working UI!!!! Also some cursed haskell-ing.

@@ -6,18 +6,18 @@
 {-# HLINT ignore "Use first"              #-}
 
 
-import Control.Monad
-import Data.Hashable    (Hashable)
-import Data.List        (sortOn, transpose)
-import Data.List.Split  (splitOn)
-import Data.Ord         (Down (..))
-import Graphics.UI.Gtk  (Window, Entry)
-import Text.Regex.Posix ((=~))
-import Prelude          hiding (Word)
+import Control.Monad    ( join )
+import Data.Hashable    ( Hashable )
+import Data.List        ( sortOn, transpose )
+import Data.List.Split  ( splitOn )
+import Data.Ord         ( Down (..) )
+import Graphics.UI.Gtk  ( Builder )
+import Text.Regex.Posix ( (=~) )
+import Prelude          hiding ( Word )
 
 import qualified Data.HashMap.Strict as M
 
-import Graphics (enterPhase, gamePhase, setGameDisplay)
+import Graphics ( enterPhase, gamePhase, endPhase )
 
 
 type Turn = Int
@@ -42,7 +42,6 @@ type Game = [GameNode]
 (&&&) :: (a -> b) -> (a -> c) -> a -> (b, c)
 (&&&) f g x = (f x, g x)
 
-
 condense :: (Hashable a, Num b) => [(a, b)] -> [(a, b)]
 condense = M.toList . M.fromListWith (+)
 
@@ -59,7 +58,6 @@ entropy :: Letter -> Game -> Double
 entropy letter game =
     let
         counts = map (map snd . condense) (maskMap letter game)
-        -- ps     = map (flip (/) . sum >>= map) counts
         ps     = map (map =<< flip (/) . sum) counts
     in
         sum $ map ((0 -) . sum . map ((*) <*> logBase 2)) ps
@@ -118,32 +116,27 @@ cut letter raw game turn =
 mostLikely :: Game -> [Word]
 mostLikely game = map (fst . head . sortOn (Down . snd) . condense . concat) $ transpose $ map fst game
 
-ask :: Game -> Turn -> Entry -> IO ()
-ask game turn display = do
-    -- print game
-    setGameDisplay display [(++) "Most Likely: " $ unwords $ mostLikely game]
+next :: Game -> Turn -> Letter -> Builder -> Pattern -> IO ()
+next game turn letter builder pattern = ask (simplify (cut letter pattern game turn)) (turn + 1) builder
+
+ask :: Game -> Turn -> Builder -> IO ()
+ask game turn builder = do
     case entropyMax game of
-        Nothing -> putStrLn $ (++) "Solved: " $ unwords $ map fst $ concat $ fst $ last game
+        Nothing -> endPhase builder $ unwords $ map fst $ concat $ fst $ last game
         Just (letter, ent) -> do
-            putStrLn $ letter:"? Expected information: " ++ show ent
-            -- getLine >>= \pattern -> ask (simplify (cut letter pattern game turn)) (turn + 1) display
+            gamePhase builder [ letter:"?"
+                              , unwords $ mostLikely game
+                              , show ent ] (next game (turn + 1) letter builder)
 
 parse :: String -> WordFreq
 parse word = (head (splitOn "," word), read $ splitOn "," word !! 1)
 
-ready :: Window -> Pattern -> IO ()
-ready window pattern = do
+ready :: Builder -> Pattern -> IO ()
+ready builder pattern = do
     contents <- readFile "wordFreq2.csv"
     let wordList = map parse $ take 50000 $ words contents
     let newList = map (\word -> filter ((== length word) . length . fst) wordList) (words pattern)
-    gamePhase window >>= ask [(newList, 1)] 1
-    
+    ask [(newList, 1)] 1 builder
 
 main :: IO ()
-main = do
-
-    enterPhase ready
-
-    -- pattern <- getLine
-    -- let newList = map (\word -> filter ((== length word) . length . fst) wordList) (words pattern)
-    -- ask [(newList, 1)] 1
+main = enterPhase ready

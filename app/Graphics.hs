@@ -1,36 +1,34 @@
+{-# LANGUAGE RecursiveDo #-}
+
+
 module Graphics (
                 enterPhase
               , gamePhase
-              , setGameDisplay)
+              , endPhase)
                 where
 
 import Graphics.UI.Gtk
-import Control.Monad.IO.Class
-
-renderWindow :: IO Window
-renderWindow = do
-    window <- windowNew
-    set window [ windowTitle         := "Hangman"
-               , windowResizable     := False
-               , windowDefaultWidth  := 150
-               , windowDefaultHeight := 100 ]
-    pure window
-
-enterPhaseDisplay :: IO Entry
-enterPhaseDisplay = do
-    display <- entryNew
-    set display [ entryEditable := False
-                , entryXalign   := 0.5
-                , entryText     := "" ]
-    pure display
-
-mkBtn :: String -> IO () -> IO Button
-mkBtn label func = do
-    btn <- buttonNew
-    set btn [ buttonLabel := label ]
-    _ <- btn `on` buttonActivated $
-        func
-    pure btn
+    ( on,
+      signalDisconnect,
+      containerAdd,
+      containerRemove,
+      deleteEvent,
+      widgetShowAll,
+      builderAddFromFile,
+      builderGetObject,
+      builderNew,
+      buttonActivated,
+      entryGetText,
+      entrySetText,
+      initGUI,
+      mainGUI,
+      mainQuit,
+      castToButton,
+      castToEntry,
+      castToGrid,
+      castToWindow,
+      Builder )
+import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 parse :: String -> String
 parse raw = 
@@ -42,63 +40,71 @@ parse raw =
     in
         map repl (second raw)
 
-enterPhase :: (Window -> String -> IO ()) -> IO ()
+enterPhase :: (Builder -> String -> IO ()) -> IO ()
 enterPhase readyFunc = do
     _ <- initGUI
-    window <- renderWindow
-    _ <- window `on` deleteEvent $ do
-        liftIO mainQuit
-        return False
-    display <- enterPhaseDisplay
+    builder <- builderNew
+    builderAddFromFile builder "UI.glade"
 
-    grid <- gridNew
-    gridSetRowHomogeneous grid True
-    let attach x y w h item = gridAttach grid item x y w h
+    enterWindow <- builderGetObject builder castToWindow "enterWindow"
+    gameWindow  <- builderGetObject builder castToWindow "gameWindow"
+    enterGrid   <- builderGetObject builder castToGrid "enterGrid"
+    gameGrid    <- builderGetObject builder castToGrid "gameGrid"
+    display     <- builderGetObject builder castToEntry "entry"
 
-    attach 0 0 3 1 display
-        
-    mkBtn "Add Letter" (
+    addLetter <- builderGetObject builder castToButton "addLetter"
+    _ <- addLetter `on` buttonActivated $
         entryGetText display >>= entrySetText display . (++ "_ ")
-        ) >>= attach 0 1 1 1
-    
-    mkBtn "Add Space" (
+
+    addSpace <- builderGetObject builder castToButton "addSpace"
+    _ <- addSpace `on` buttonActivated $ 
         entryGetText display >>= entrySetText display . (\orig -> 
             if not (null orig) && last (init orig) == '_' 
             then orig ++ "  " 
             else orig)
-            ) >>= attach 1 1 1 1
 
-    mkBtn "Ready" (do 
-        containerRemove window grid
-        entryGetText display >>= readyFunc window . parse
-        ) >>= attach 2 1 1 1
+    ready <- builderGetObject builder castToButton "ready"
+    _ <- ready `on` buttonActivated $ do 
+        containerRemove enterWindow enterGrid
+        containerRemove gameWindow gameGrid
+        containerAdd enterWindow gameGrid
+        entryGetText display >>= readyFunc builder . parse
 
-    containerAdd window grid
-    widgetShowAll window
+    _ <- enterWindow `on` deleteEvent $ do
+        liftIO mainQuit
+        return False
+
+    widgetShowAll enterWindow
     mainGUI
 
+gamePhase :: Builder -> [String] -> (String -> IO ()) -> IO ()
+gamePhase builder datas next = do
+    guess        <- builderGetObject builder castToEntry "guess"
+    mostLikely   <- builderGetObject builder castToEntry "mostLikely"
+    expectedInfo <- builderGetObject builder castToEntry "expectedInfo"
+    
+    input <- builderGetObject builder castToEntry "input"
+    entrySetText input ""
+    
+    proceed <- builderGetObject builder castToButton "proceed"
+    rec handler <- proceed `on` buttonActivated $ do 
+        { signalDisconnect handler
+        ; entryGetText input >>= next }
 
-gamePhaseDisplay :: IO Entry
-gamePhaseDisplay = do
-    display <- entryNew
-    set display [ entryEditable := False
-                , entryXalign   := 0.5
-                , entryText     := "" ]
-    pure display
+    entrySetText guess        $ datas !! 0
+    entrySetText mostLikely   $ datas !! 1
+    entrySetText expectedInfo $ datas !! 2
 
-setGameDisplay :: Entry -> [String] -> IO ()
-setGameDisplay display datas = entrySetText display $ datas !! 0
+endPhase :: Builder -> String -> IO ()
+endPhase builder text = do
+    enterWindow <- builderGetObject builder castToWindow "enterWindow"
+    endWindow   <- builderGetObject builder castToWindow "endWindow"
+    gameGrid    <- builderGetObject builder castToGrid "gameGrid"
+    endGrid     <- builderGetObject builder castToGrid "endGrid"
+    
+    containerRemove enterWindow gameGrid
+    containerRemove endWindow endGrid
+    containerAdd enterWindow endGrid
 
-gamePhase :: Window -> IO Entry
-gamePhase window = do
-    display <- gamePhaseDisplay
-
-    grid <- gridNew
-    gridSetRowHomogeneous grid True
-    let attach x y w h item = gridAttach grid item x y w h
-
-    attach 0 0 3 1 display
-
-    containerAdd window grid
-    widgetShowAll window
-    pure display
+    solved <- builderGetObject builder castToEntry "solved"
+    entrySetText solved text
