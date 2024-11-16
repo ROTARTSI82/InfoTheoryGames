@@ -121,7 +121,7 @@
     <property name="default-width">500</property>
     <property name="default-height">250</property>
     <child>
-      <!-- n-columns=3 n-rows=4 -->
+      <!-- n-columns=3 n-rows=5 -->
       <object class="GtkGrid" id="gameGrid">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
@@ -151,7 +151,7 @@
           </object>
           <packing>
             <property name="left-attach">0</property>
-            <property name="top-attach">3</property>
+            <property name="top-attach">4</property>
           </packing>
         </child>
         <child>
@@ -179,7 +179,7 @@
           </object>
           <packing>
             <property name="left-attach">1</property>
-            <property name="top-attach">3</property>
+            <property name="top-attach">4</property>
           </packing>
         </child>
         <child>
@@ -206,7 +206,7 @@
           </object>
           <packing>
             <property name="left-attach">2</property>
-            <property name="top-attach">3</property>
+            <property name="top-attach">4</property>
           </packing>
         </child>
         <child>
@@ -219,6 +219,34 @@
             <property name="left-attach">0</property>
             <property name="top-attach">1</property>
             <property name="width">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="sndMostLikelyText">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="editable">False</property>
+            <property name="has-frame">False</property>
+            <property name="text" translatable="yes">Second Most Likely:</property>
+            <property name="caps-lock-warning">False</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="sndMostLikely">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="editable">False</property>
+            <property name="has-frame">False</property>
+            <property name="caps-lock-warning">False</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">3</property>
+            <property name="width">2</property>
           </packing>
         </child>
       </object>

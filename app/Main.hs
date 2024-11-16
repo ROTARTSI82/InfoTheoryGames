@@ -18,6 +18,7 @@ import Prelude          hiding ( Word )
 import qualified Data.HashMap.Strict as M
 
 import Graphics ( enterPhase, gamePhase, endPhase )
+import Control.Concurrent (yield)
 
 
 type Turn = Int
@@ -50,8 +51,8 @@ mask letter word = [if character == letter then '1' else '0' | character <- word
 
 maskMap :: Letter -> Game -> [[(Pattern, Probability)]]
 maskMap letter
-    = map join 
-    . transpose 
+    = map join
+    . transpose
     . map ((map . map . (mask letter ***) . (. fromIntegral) . (*) . snd) <*> fst)
 
 entropy :: Letter -> Game -> Double
@@ -88,8 +89,8 @@ cutPartitionEmpty letter gameNode turn =
     in
         ( map (filter (notElem letter . fst)) $ fst gameNode
         , snd gameNode * (1 - lieDist turn)
-        ) : map 
-            ((, p) . flip (zipWith (\cond -> filter ((if cond == '0' then notElem else elem) letter . fst))) (fst gameNode)) 
+        ) : map
+            ((, p) . flip (zipWith (\cond -> filter ((if cond == '0' then notElem else elem) letter . fst))) (fst gameNode))
             combinations
 
 cutPartitionNotEmpty :: Letter -> [Pattern] -> GameNode -> Turn -> Game
@@ -107,8 +108,8 @@ cut :: Letter -> Pattern -> Game -> Turn -> Game
 cut letter raw game turn =
     let
         patterns = map (concatMap (\c -> if c == letter then [letter] else "[^" ++ [letter] ++ "]")) (words raw)
-    in 
-        ( if   all (`elem` ". ") raw 
+    in
+        ( if   letter `notElem` raw
           then cutPartitionEmpty letter (head game) turn
           else cutPartitionNotEmpty letter patterns (head game) turn
         ) ++ cutFilter patterns (tail game)
@@ -116,17 +117,27 @@ cut letter raw game turn =
 mostLikely :: Game -> [Word]
 mostLikely game = map (fst . head . sortOn (Down . snd) . condense . concat) $ transpose $ map fst game
 
-next :: Game -> Turn -> Letter -> Builder -> Pattern -> IO ()
-next game turn letter builder pattern = ask (simplify (cut letter pattern game turn)) (turn + 1) builder
+secondLikely :: Game -> [Word]
+secondLikely game = 
+    let
+        sec :: [a] -> a
+        sec [x] = x
+        sec (_:xs) = head xs
+    in
+        map (fst . sec . sortOn (Down . snd) . condense . concat) $ transpose $ map fst game
 
-ask :: Game -> Turn -> Builder -> IO ()
-ask game turn builder = do
+next :: Game -> Turn -> Letter -> Builder -> Int -> Pattern -> IO ()
+next game turn letter builder expectedLength pattern = ask (simplify (cut letter pattern game turn)) (turn + 1) builder expectedLength
+
+ask :: Game -> Turn -> Builder -> Int -> IO ()
+ask game turn builder expectedLength = do
     case entropyMax game of
         Nothing -> endPhase builder $ unwords $ map fst $ concat $ fst $ last game
         Just (letter, ent) -> do
             gamePhase builder [ letter:"?"
                               , unwords $ mostLikely game
-                              , show ent ] (next game (turn + 1) letter builder)
+                              , unwords $ secondLikely game
+                              , show ent ] expectedLength (next game (turn + 1) letter builder expectedLength)
 
 parse :: String -> WordFreq
 parse word = (head (splitOn "," word), read $ splitOn "," word !! 1)
@@ -136,7 +147,7 @@ ready builder pattern = do
     contents <- readFile "wordFreq2.csv"
     let wordList = map parse $ take 50000 $ words contents
     let newList = map (\word -> filter ((== length word) . length . fst) wordList) (words pattern)
-    ask [(newList, 1)] 1 builder
+    ask [(newList, 1)] 1 builder $ length pattern
 
 main :: IO ()
 main = enterPhase ready

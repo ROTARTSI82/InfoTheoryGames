@@ -72,6 +72,11 @@ probabilistic lie distribution that I fixed. Some Haskell style guide editing, t
 that I started implementing graphics. Not done yet, just like the starting screen where you enter the phrase. I just
 need to push this before I mess everything up.
 
-## 0.6.0.0 -- 2024-11-06
+## 0.6.0.0 -- 2024-11-15
 
 * Working UI!!!! Also some cursed haskell-ing.
+
+## 0.6.1.0 -- 2024-11-15
+
+* Made it so that it's not possible to proceed unless the inputted text is the correct length. Also, there's a second
+most likely printed, so you know what other options there are.

@@ -29,9 +29,10 @@ import Graphics.UI.Gtk
       castToWindow,
       Builder )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
+import qualified Control.Monad
 
 parse :: String -> String
-parse raw = 
+parse raw =
     let
         repl '_' = '.'
         repl c   = c
@@ -57,14 +58,14 @@ enterPhase readyFunc = do
         entryGetText display >>= entrySetText display . (++ "_ ")
 
     addSpace <- builderGetObject builder castToButton "addSpace"
-    _ <- addSpace `on` buttonActivated $ 
-        entryGetText display >>= entrySetText display . (\orig -> 
-            if not (null orig) && last (init orig) == '_' 
-            then orig ++ "  " 
+    _ <- addSpace `on` buttonActivated $
+        entryGetText display >>= entrySetText display . (\orig ->
+            if not (null orig) && last (init orig) == '_'
+            then orig ++ "  "
             else orig)
 
     ready <- builderGetObject builder castToButton "ready"
-    _ <- ready `on` buttonActivated $ do 
+    _ <- ready `on` buttonActivated $ do
         containerRemove enterWindow enterGrid
         containerRemove gameWindow gameGrid
         containerAdd enterWindow gameGrid
@@ -77,23 +78,33 @@ enterPhase readyFunc = do
     widgetShowAll enterWindow
     mainGUI
 
-gamePhase :: Builder -> [String] -> (String -> IO ()) -> IO ()
-gamePhase builder datas next = do
+gamePhase :: Builder -> [String] -> Int -> (String -> IO ()) -> IO ()
+gamePhase builder datas expectedLength next = do
     guess        <- builderGetObject builder castToEntry "guess"
     mostLikely   <- builderGetObject builder castToEntry "mostLikely"
+    sndMostLikely   <- builderGetObject builder castToEntry "sndMostLikely"
     expectedInfo <- builderGetObject builder castToEntry "expectedInfo"
-    
+
     input <- builderGetObject builder castToEntry "input"
     entrySetText input ""
-    
-    proceed <- builderGetObject builder castToButton "proceed"
-    rec handler <- proceed `on` buttonActivated $ do 
-        { signalDisconnect handler
-        ; entryGetText input >>= next }
 
-    entrySetText guess        $ datas !! 0
-    entrySetText mostLikely   $ datas !! 1
-    entrySetText expectedInfo $ datas !! 2
+    proceed <- builderGetObject builder castToButton "proceed"
+
+    rec handler <- proceed `on` buttonActivated $ do {
+        let
+            stringLength :: String -> Int
+            stringLength = length
+        in do {
+            text <- entryGetText input;
+            Control.Monad.when (stringLength text == expectedLength) $ do
+                { signalDisconnect handler
+                ; entryGetText input >>= next } }
+        }
+
+    entrySetText guess         $ datas !! 0
+    entrySetText mostLikely    $ datas !! 1
+    entrySetText sndMostLikely $ datas !! 2
+    entrySetText expectedInfo  $ datas !! 3
 
 endPhase :: Builder -> String -> IO ()
 endPhase builder text = do
@@ -101,7 +112,7 @@ endPhase builder text = do
     endWindow   <- builderGetObject builder castToWindow "endWindow"
     gameGrid    <- builderGetObject builder castToGrid "gameGrid"
     endGrid     <- builderGetObject builder castToGrid "endGrid"
-    
+
     containerRemove enterWindow gameGrid
     containerRemove endWindow endGrid
     containerAdd enterWindow endGrid
