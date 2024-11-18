@@ -59,14 +59,19 @@ inline constexpr grid_t mk_ship_mask(int size, bool vert, int x, int y) {
     return shift2d((vert ? VMASKS : HMASKS)[size - 2], x, y);
 }
 
-// REQ_MASK[i][p][j][vert] will represent the possible positions for ship j given that 
-// there exists a ship i at square p. 
-// REQ_MASK[i][0][i][vert] = initial starting point for ship type i given boundaries.
-// this has huge wastage as ships 2 and 3 are identical.
-extern grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
+inline constexpr grid_t mk_ship_mask(int size, bool vert, int sq) {
+    return (vert ? VMASKS : HMASKS)[size - 2] << static_cast<grid_t>(sq);
+}
+
+// REQ_MASK[i][p][j][vert] will represent the possible positions for ship with size j with vert given that
+// there exists a ship of size i at square/vertical-state p.
+extern grid_t REQ_MASKS[NUM_SHIPS-1][BOARD_SIZE*2][NUM_SHIPS-1][2];
+
+// REQ_HIT_MASKS[i][vert][occ] will represent the possible positions for a ship of size i with vert
+// given that the square at occ is occupied. Index [i][vert][BOARD_SIZE] represents empty board.
+extern grid_t REQ_HIT_MASKS[NUM_SHIPS-1][2][BOARD_SIZE+1]; // idx at BOARD_SIZE Is empty board
 constexpr void init_req_masks() {
-    for (int base_ship = 0; base_ship < NUM_SHIPS; base_ship++) {
-        int base_size = SHIP_SIZES[base_ship];
+    for (int base_size = 2; base_size < 6; base_size++) {
         for (int place = 0; place < BOARD_SIZE * 2; place++) {
             int base_sq = place % BOARD_SIZE;
             bool base_vert = place / BOARD_SIZE;
@@ -78,27 +83,48 @@ constexpr void init_req_masks() {
                 continue; // base doesnt even fit.
 
             grid_t base = mk_ship_mask(base_size, base_vert, base_x, base_y);
-            for (int query = 0; query < NUM_SHIPS * 2; query++) {
-                int place_ship = query % NUM_SHIPS;
-                int place_size = SHIP_SIZES[place_ship];
-                bool place_vert = query / NUM_SHIPS;
+            for (int query = 0; query < (NUM_SHIPS-1) * 2; query++) {
+                int place_size = 2 + (query % (NUM_SHIPS - 1));
+                bool place_vert = query / (NUM_SHIPS - 1);
 
                 // if we are querying about placing a ship already placed
                 // we reinterpret to be about placing the ship onto an empty board.
-                grid_t eff_base = (place_ship == base_ship ? 0 : base);
+                //todo: broken now that sizes since place==base is possible for 2
+//                grid_t eff_base = (place_size == base_size ? 0 : base);
 
-                REQ_MASKS[base_ship][place][place_ship][place_vert?1:0] = 0;
+                REQ_MASKS[base_size-2][place][place_size-2][place_vert?1:0] = 0;
                 for (int qsq = 0; qsq < BOARD_SIZE; qsq++) {
                     int p_x = qsq % BOARD_WIDTH;
                     int p_y = qsq / BOARD_WIDTH;
                     if ((!place_vert && p_x+ place_size > BOARD_WIDTH)
                         || (place_vert && p_y + place_size > BOARD_HEIGHT)
-                        || (eff_base & mk_ship_mask(place_size, place_vert, p_x, p_y)))
+                        || (base & mk_ship_mask(place_size, place_vert, p_x, p_y)))
                         continue;
                     
-                    REQ_MASKS[base_ship][place][place_ship][place_vert?1:0]
+                    REQ_MASKS[base_size-2][place][place_size-2][place_vert?1:0]
                         |= mk_mask(p_x, p_y);
                 }
+            }
+        }
+    }
+
+    for (int ship_size = 2; ship_size < 6; ship_size++) {
+        for (int occ_sq = 0; occ_sq < BOARD_SIZE+1; occ_sq++) {
+            grid_t occ = occ_sq < BOARD_SIZE ? mk_mask(occ_sq) : ~static_cast<grid_t>(0);
+
+            REQ_HIT_MASKS[ship_size - 2][0][occ_sq] = 0;
+            REQ_HIT_MASKS[ship_size - 2][1][occ_sq] = 0;
+
+            for (int plsq = 0; plsq < BOARD_SIZE*2; plsq++) {
+                bool vert = plsq / BOARD_SIZE;
+                int p_x = (plsq % BOARD_SIZE) % BOARD_WIDTH;
+                int p_y = (plsq % BOARD_SIZE) / BOARD_WIDTH;
+                grid_t try_place = mk_ship_mask(ship_size, vert, p_x, p_y);
+                if ((!vert && p_x+ ship_size > BOARD_WIDTH)
+                    || (vert && p_y + ship_size > BOARD_HEIGHT)
+                    || !(occ & try_place))
+                    continue;
+                REQ_HIT_MASKS[ship_size - 2][vert?1:0][occ_sq] |= mk_mask(p_x, p_y);
             }
         }
     }

@@ -114,7 +114,7 @@ void BSSampler::multithread_enum() {
  * `excl` is used when we want to enumerate the ship type we place first,
  * as a good strat is to satisfy the hit marker given by `hit_anchor`
  * and then go on, to eliminate many branches as early as possible.
- */
+ */ //TODO: make the recursion happen in template comptime
 void BSSampler::enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl) {
     assert(!(working >> (grid_t)BOARD_SIZE));
 
@@ -133,20 +133,21 @@ void BSSampler::enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl)
         return;
     }
 
-    grid_t cand_horiz = REQ_MASKS[ship_no][0][ship_no][0];
-    grid_t cand_vert = REQ_MASKS[ship_no][0][ship_no][1];
+    const int ship_size_idx = SHIP_SIZES[ship_no]-2;
+    grid_t cand_horiz = REQ_MASKS[ship_size_idx][0][ship_size_idx][0];
+    grid_t cand_vert = REQ_MASKS[ship_size_idx][0][ship_size_idx][1];
     // REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2];
 
     if (ship_no != excl) {
         for (int i = 0; i < ship_no; i++) {
             int sq = conf.ships[i];
-            cand_horiz &= REQ_MASKS[i][sq][ship_no][0];
-            cand_vert &= REQ_MASKS[i][sq][ship_no][1];
+            cand_horiz &= REQ_MASKS[SHIP_SIZES[i]-2][sq][ship_size_idx][0];
+            cand_vert &= REQ_MASKS[SHIP_SIZES[i]-2][sq][ship_size_idx][1];
         }
         if (excl >= 0) {
             int sq = conf.ships[excl];
-            cand_horiz &= REQ_MASKS[excl][sq][ship_no][0];
-            cand_vert &= REQ_MASKS[excl][sq][ship_no][1];
+            cand_horiz &= REQ_MASKS[SHIP_SIZES[excl]-2][sq][ship_size_idx][0];
+            cand_vert &= REQ_MASKS[SHIP_SIZES[excl]-2][sq][ship_size_idx][1];
         }
     }
 

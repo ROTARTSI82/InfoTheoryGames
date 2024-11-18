@@ -94,7 +94,8 @@ void test_randsample() {
 }
 
 int run_battleship();
-grid_t REQ_MASKS[NUM_SHIPS][BOARD_SIZE*2][NUM_SHIPS][2] = {{{{0}}}};
+grid_t REQ_MASKS[NUM_SHIPS-1][BOARD_SIZE*2][NUM_SHIPS-1][2] = {{{{0}}}};
+grid_t REQ_HIT_MASKS[NUM_SHIPS-1][2][BOARD_SIZE+1] = {{{0}}};
 int main() {
     init_req_masks();
 

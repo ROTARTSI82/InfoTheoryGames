@@ -57,13 +57,25 @@ int BSSampler::try_random(std::mt19937_64 &rng) {
     for (int ship : ship_perm) {
         assert(!(working >> (grid_t)100));
 
-        grid_t cand_horiz = REQ_MASKS[ship][0][ship][0] & ~misses;
-        grid_t cand_vert = REQ_MASKS[ship][0][ship][1] & ~misses;
+        const int ship_size_idx = SHIP_SIZES[ship] - 2;
+        grid_t cand_horiz = REQ_HIT_MASKS[ship_size_idx][0][BOARD_SIZE];
+        grid_t cand_vert = REQ_HIT_MASKS[ship_size_idx][1][BOARD_SIZE];
+
+        grid_t miss_cpy = misses;
+        while (miss_cpy) {
+            cand_horiz &= ~REQ_HIT_MASKS[ship_size_idx][0][countr_zero(miss_cpy)];
+            cand_vert &= ~REQ_HIT_MASKS[ship_size_idx][1][countr_zero(miss_cpy)];
+            miss_cpy &= miss_cpy - 1;
+        }
+
+        grid_t hit_cpy = hits; // do the same thing with hits but with
+
         for (int i = 0; i < ship_idx; i++) {
             int idx = ship_perm[i];
             int sq = conf.ships[idx];
-            cand_horiz &= REQ_MASKS[idx][sq][ship][0];
-            cand_vert &= REQ_MASKS[idx][sq][ship][1];
+            idx = SHIP_SIZES[idx] - 2;
+            cand_horiz &= REQ_MASKS[idx][sq][ship_size_idx][0];
+            cand_vert &= REQ_MASKS[idx][sq][ship_size_idx][1];
         }
 
         int nhoriz = popcnt(cand_horiz);
