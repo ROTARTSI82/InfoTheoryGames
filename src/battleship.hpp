@@ -185,9 +185,9 @@ struct BSSampler {
     grid_t misses = 0;
     grid_t hit_anchors[4] = {0};
 
-    uint32_t counts[BOARD_SIZE];
-    uint32_t total;
-    uint32_t its;
+    std::atomic_uint32_t counts[BOARD_SIZE];
+    std::atomic_uint32_t total;
+    std::atomic_uint32_t its;
 
     std::mutex impossible_mtx;
     std::unordered_set<uint64_t> impossible;

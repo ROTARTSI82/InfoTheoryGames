@@ -106,9 +106,16 @@ int main() {
     //             dump_board(REQ_MASKS[i][j][k%NUM_SHIPS][k/NUM_SHIPS], true);
     //         }
 
+//    for (int i = 0; i < NUM_SHIPS - 1; i++)
+//        for (int j = 0; j < BOARD_SIZE+1; j++)
+//            for (int k = 0; k < 2; k++) {
+//                std::cout << "\nship size = " << i + 2 << ", occ = " << j << ", vert = " << k << '\n';
+//                dump_board(REQ_HIT_MASKS[i][k][j], true);
+//            }
+
     // return 0;
     std::cout << "config size = " << sizeof(BSConfig2) << '\n';
     // test_randsample();
-     run_battleship();
+    run_battleship();
 //    test_enum();
 }

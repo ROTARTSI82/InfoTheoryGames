@@ -43,7 +43,7 @@ void BSSampler::random_populate_hit_anchors(std::mt19937_64 &rng) {
 // 3 if we failed to satisfy all hits or it was impossible
 int BSSampler::try_random(std::mt19937_64 &rng) {
     RAND_PERM(ship_perm, NUM_SHIPS, rng);
-    int perm;
+    uint64_t perm;
     {
         std::lock_guard<std::mutex> lg(impossible_mtx);
         assert(impossible.size() < 120);
@@ -68,7 +68,8 @@ int BSSampler::try_random(std::mt19937_64 &rng) {
             miss_cpy &= miss_cpy - 1;
         }
 
-        grid_t hit_cpy = hits; // do the same thing with hits but with
+        // todo: upgraded hit anchors is a possibility.
+        // grid_t hit_cpy = hits;
 
         for (int i = 0; i < ship_idx; i++) {
             int idx = ship_perm[i];
