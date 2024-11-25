@@ -99,10 +99,10 @@ int run_battleship()
 
     grid_t occ_ships[NUM_SHIPS] = {0};
     BSSampler sampler{};
-    sampler.create_miss_masks(false);
     int maxIt = 0;
     std::random_device dev;
     std::mt19937_64 rng(dev());
+    sampler.create_miss_masks(rng, false);
     while (!done)
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -178,29 +178,29 @@ int run_battleship()
             ImGui::SameLine();
             if (ImGui::Button("Calculate Random Sample")) {
                 sampler.clear();
-                sampler.create_miss_masks(true);
+                sampler.create_miss_masks(rng, true);
                 sampler.multithread_randsample(maxIt);
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
             if (ImGui::Button("Enumerate")) {
                 sampler.clear();
-                sampler.create_miss_masks(true);
-                sampler.multithread_enum();
+                sampler.create_miss_masks(rng, true);
+                sampler.enumerate();
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
 
-            ImGui::Text("Found/Iterations: %i/%i", sampler.total.load(), sampler.its.load());
+            ImGui::Text("Found/Iterations: %i/%i", (unsigned) sampler.total, (unsigned) sampler.its);
 
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame;
             if (ImGui::BeginTable("Battleship", BOARD_WIDTH, flags)) {
                 for (int sq = 0; sq < BOARD_SIZE; sq++) {
                     ImGui::PushID(sq);
                     ImGui::TableNextColumn();
-                    auto prob = static_cast<float>(sampler.probs[sq]);
+                    auto prob = std::min(static_cast<float>(sampler.probs[sq] / sampler.max_prob), 1.0f);
                     ImVec4 col = ImVec4(prob, 1.0f - prob, 0.0, 1.0);
-                    ImGui::TextColored(col, "Prob: %f", prob);
+                    ImGui::TextColored(col, "Prob: %f", sampler.probs[sq]);
 
                     for (int shp = 0; shp < NUM_SHIPS; shp++) {
                         if (mk_mask(sq) & occ_ships[shp]) {

@@ -18,7 +18,7 @@ void test_enum() {
     //     e.misses |= mk_mask(dist(rng));
     // e.random_populate_hit_anchors(rng);
     // e.launch_multithread();
-    e.enumerate(0, BSConfig2{}, 0, -1);
+    e.enumerate();
 
     std::cout << "===== [ HITS ] =====\n";
     dump_board(e.hits);
@@ -52,7 +52,7 @@ void test_randsample() {
             e.misses |= mk_mask(dist(rng));
     }
 
-    e.create_miss_masks(false);
+    e.create_miss_masks(rng, false);
 
     std::cout << "===== [ HITS ] =====\n";
     dump_board(e.hits, true);

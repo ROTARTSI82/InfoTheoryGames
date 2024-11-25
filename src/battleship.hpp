@@ -187,9 +187,9 @@ struct BSSampler {
     grid_t req_miss_masks[NUM_SHIPS-1][2] = {{~static_cast<grid_t>(0)}};
 
     // TODO: need to upgrade to 64_t for full enum of all 30bil positions?
-    std::atomic_uint32_t config_counts[BOARD_SIZE*2][NUM_SHIPS-1] = {{0}};
-    std::atomic_uint32_t total = 0;
-    std::atomic_uint32_t its = 0;
+    std::atomic_uint_fast32_t config_counts[BOARD_SIZE*2][NUM_SHIPS-1] = {{0}};
+    std::atomic_uint_fast64_t total = 0;
+    std::atomic_uint_fast64_t its = 0;
 
     int hit_anchor_sq = -1; // only for first ship placed.
 
@@ -197,6 +197,7 @@ struct BSSampler {
     std::unordered_set<uint64_t> impossible{};
 
     double probs[BOARD_SIZE] = {0};
+    double max_prob = 1;
     int next_guess_sq = -1;
 
     inline void clear() {
@@ -210,10 +211,10 @@ struct BSSampler {
                 y = 0;
     }
 
-    void enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl);
+    void enumerate();
     void multithread_enum();
 
-    void create_miss_masks(bool use_config_counts);
+    void create_miss_masks(std::mt19937_64 &rng, bool use_config_counts);
 
     void try_random(std::mt19937_64 &rng);
 

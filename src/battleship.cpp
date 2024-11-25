@@ -11,7 +11,7 @@ inline constexpr uint64_t ship_perm_to_int(const std::vector<int> &perm) {
 
 
 // precalculate the restrictions based on misses and ship size.
-void BSSampler::create_miss_masks(bool use_counts) {
+void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
     for (int size = 0; size < NUM_SIZES; size++)
         for (int vert = 0; vert < 2; vert++) {
             req_miss_masks[size][vert] = REQ_HIT_MASKS[size][vert][BOARD_SIZE];
@@ -36,15 +36,20 @@ void BSSampler::create_miss_masks(bool use_counts) {
                 req_miss_masks[size][vert] &= ~REQ_HIT_MASKS[size][vert][countr_zero(miss_cpy)];
         miss_cpy &= miss_cpy - 1;
     }
+
+    if (hits) {
+        int max = popcnt(hits);
+        std::uniform_int_distribution<int> dist(0, max - 1);
+        hit_anchor_sq = countr_zero(isolate_nth_bit(hits, dist(rng)));
+    } else {
+        hit_anchor_sq = -1;
+    }
 }
 
-// TODO: possible trick of switching to using config_counts and then
-//       determining which configs are determined for certain/impossible and use that info for future.
-//       this can probably be implemented by modifying req_miss_masks based on info from config_counts.
-//       put this code in create_miss_masks() probably.
 template <unsigned N, bool ONLY1>
-inline bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
-                               int *perm, std::mt19937_64 &rng, uint64_t perm_id) {
+static inline __attribute__((always_inline))
+bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
+                        int *perm, std::mt19937_64 *rng, uint64_t perm_id) {
     const int ship = perm[N];
     const int ship_size_idx = SHIP_SIZES[ship] - 2;
     grid_t cand_horiz = ~static_cast<grid_t>(0);
@@ -61,6 +66,8 @@ inline bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
     } else if (ONLY1) {
         // random sampling: require all ships placed to satisfy a hit until
         // we satisfy all hits.
+        // TODO: this is introducing a bias of explaining the seen HITS pattern
+        //       with as many ships as possible, leading to extra guessing around hits.
         if (hit_satis)
             cand_vert = cand_horiz = 0;
         while (hit_satis) {
@@ -97,7 +104,7 @@ inline bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
     std::vector<int> board_seq(tot_cand);
     if (ONLY1) {
         std::iota(board_seq.begin(), board_seq.end(), 0);
-        std::shuffle(board_seq.begin(), board_seq.end(), rng);
+        std::shuffle(board_seq.begin(), board_seq.end(), *rng);
     }
 
     int size = SHIP_SIZES[ship];
@@ -135,12 +142,17 @@ inline bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
         samp.impossible.emplace(perm_id);
     }
 
+    if (!ONLY1 && N < 3) {
+        std::cout << "tot = " << samp.total.load(std::memory_order_relaxed) << '\n';
+    }
+
     return found;
 }
 
 template <>
-inline bool recurse_randsample<5, true>(grid_t working, BSSampler &samp, BSConfig2 &conf,
-                                        int *perm, std::mt19937_64 &rng, uint64_t perm_id) {
+inline __attribute__((always_inline))
+bool recurse_randsample<5, true>(grid_t working, BSSampler &samp, BSConfig2 &conf,
+                                 int *perm, std::mt19937_64 *rng, uint64_t perm_id) {
     assert(popcnt(working) == 5+4+3+3+2);
     assert(!(working >> (grid_t)BOARD_SIZE));
     assert(!(working & samp.misses));
@@ -148,20 +160,17 @@ inline bool recurse_randsample<5, true>(grid_t working, BSSampler &samp, BSConfi
 
     for (int i = 0; i < NUM_SHIPS; i++) {
         int size_idx = SHIP_SIZES[i] - 2;
-        samp.config_counts[conf.ships[i]][size_idx]++;
+        samp.config_counts[conf.ships[i]][size_idx].fetch_add(1, std::memory_order_relaxed);
     }
 
-    samp.total++;
-//    while (working) {
-//        samp.counts[countr_zero(working)]++;
-//        working &= (working - 1);
-//    }
+    samp.total.fetch_add(1, std::memory_order::relaxed);
     return true;
 }
 
 template <>
-inline bool recurse_randsample<5, false>(grid_t working, BSSampler &samp, BSConfig2 &conf,
-                                         int *perm, std::mt19937_64 &rng, uint64_t perm_id) {
+inline __attribute__((always_inline))
+bool recurse_randsample<5, false>(grid_t working, BSSampler &samp, BSConfig2 &conf,
+                                  int *perm, std::mt19937_64 *rng, uint64_t perm_id) {
     return recurse_randsample<5, true>(working, samp, conf, perm, rng, perm_id);
 }
 
@@ -178,7 +187,13 @@ void BSSampler::try_random(std::mt19937_64 &rng) {
     }
 
     BSConfig2 conf{};
-    recurse_randsample<0, true>(0, *this, conf, ship_perm.data(), rng, perm);
+    recurse_randsample<0, true>(0, *this, conf, ship_perm.data(), &rng, perm);
+}
+
+void BSSampler::enumerate() {
+    BSConfig2 conf{};
+    int perm[] = {0, 1, 2, 3, 4};
+    recurse_randsample<0, false>(0, *this, conf, perm, nullptr, 0);
 }
 
 void BSSampler::multithread_randsample(uint32_t max) {
@@ -208,7 +223,7 @@ void BSSampler::config_to_probs() {
     for (int sq = 0; sq < BOARD_SIZE; sq++)
         for (int vert = 0; vert < 2; vert++)
             for (int size = 0; size < NUM_SIZES; size++) {
-                uint64_t inc = config_counts[sq + vert * BOARD_SIZE][size].load();
+                uint64_t inc = config_counts[sq + vert * BOARD_SIZE][size];
                 if (!inc)
                     continue;
                 grid_t mask = mk_ship_mask(2+size, vert, sq);
@@ -219,14 +234,13 @@ void BSSampler::config_to_probs() {
                 }
             }
 
-    double max = 0;
+    max_prob = 0;
     next_guess_sq = -1;
     for (int sq = 0; sq < BOARD_SIZE; sq++) {
-        if (probs[sq] > max && !((hits | misses) & mk_mask(sq))) {
-            max = probs[sq];
+        probs[sq] /= (double) total;
+        if (probs[sq] > max_prob && !((hits | misses) & mk_mask(sq))) {
+            max_prob = probs[sq];
             next_guess_sq = sq;
         }
-
-        probs[sq] /= (double) total;
     }
 }
