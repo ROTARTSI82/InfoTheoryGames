@@ -17,12 +17,9 @@ void test_enum() {
     // for (int i = 0; i < 5; i++)
     //     e.misses |= mk_mask(dist(rng));
     // e.random_populate_hit_anchors(rng);
-    e.hit_anchors[0] = 0;
     // e.launch_multithread();
     e.enumerate(0, BSConfig2{}, 0, -1);
 
-    std::cout << " ==== [anchor] =====\n";
-    dump_board(e.hit_anchors[0]);
     std::cout << "===== [ HITS ] =====\n";
     dump_board(e.hits);
     std::cout << "======= [ MISS ] =======\n";
@@ -55,17 +52,12 @@ void test_randsample() {
             e.misses |= mk_mask(dist(rng));
     }
 
-    e.random_populate_hit_anchors(rng);
+    e.create_miss_masks();
 
     std::cout << "===== [ HITS ] =====\n";
     dump_board(e.hits, true);
     std::cout << "======= [ MISS ] =======\n";
     dump_board(e.misses, true);
-
-    for (int i = 0; i < 4; i++) {
-        std::cout << "======= [ ANCH x ] =======\n";
-        dump_board(e.hit_anchors[i], true);
-    }
 
     // return;
 
@@ -115,6 +107,7 @@ int main() {
 
     // return 0;
     std::cout << "config size = " << sizeof(BSConfig2) << '\n';
+    std::cout << "sampler size = " << sizeof(BSSampler) << '\n';
     // test_randsample();
     run_battleship();
 //    test_enum();

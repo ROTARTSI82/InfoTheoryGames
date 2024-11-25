@@ -179,7 +179,7 @@ int run_battleship()
             ImGui::SameLine();
             if (ImGui::Button("Calculate Random Sample")) {
                 sampler.clear();
-                sampler.random_populate_hit_anchors(rng);
+                sampler.create_miss_masks();
                 sampler.multithread_randsample(maxIt);
                 maxprob = 0;
                 for (int s = 0; s < BOARD_SIZE; s++) {
@@ -193,7 +193,7 @@ int run_battleship()
             }
             if (ImGui::Button("Enumerate")) {
                 sampler.clear();
-                sampler.random_populate_hit_anchors(rng);
+                sampler.create_miss_masks();
                 sampler.multithread_enum();
                 maxprob = 0;
                 for (int s = 0; s < BOARD_SIZE; s++) {

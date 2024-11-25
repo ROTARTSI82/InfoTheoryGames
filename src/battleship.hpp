@@ -16,6 +16,7 @@ using grid_t = __uint128_t;
 
 constexpr int SHIP_SIZES[] = {5,4,3,3,2};
 constexpr int NUM_SHIPS = 5;
+constexpr int NUM_SIZES = 4;
 constexpr int BOARD_WIDTH = 10;
 constexpr int BOARD_HEIGHT = 10;
 constexpr int BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT;
@@ -65,11 +66,12 @@ inline constexpr grid_t mk_ship_mask(int size, bool vert, int sq) {
 
 // REQ_MASK[i][p][j][vert] will represent the possible positions for ship with size j with vert given that
 // there exists a ship of size i at square/vertical-state p.
-extern grid_t REQ_MASKS[NUM_SHIPS-1][BOARD_SIZE*2][NUM_SHIPS-1][2];
+extern grid_t REQ_MASKS[NUM_SIZES][BOARD_SIZE*2][NUM_SIZES][2];
 
 // REQ_HIT_MASKS[i][vert][occ] will represent the possible positions for a ship of size i with vert
-// given that the square at occ is occupied. Index [i][vert][BOARD_SIZE] represents empty board.
-extern grid_t REQ_HIT_MASKS[NUM_SHIPS-1][2][BOARD_SIZE+1]; // idx at BOARD_SIZE Is empty board
+// to satisfy the condition that the square at occ is occupied.
+// Index [i][vert][BOARD_SIZE] represents empty board/no condition at all.
+extern grid_t REQ_HIT_MASKS[NUM_SIZES][2][BOARD_SIZE+1]; // idx at BOARD_SIZE Is empty board
 constexpr void init_req_masks() {
     for (int base_size = 2; base_size < 6; base_size++) {
         for (int place = 0; place < BOARD_SIZE * 2; place++) {
@@ -86,11 +88,6 @@ constexpr void init_req_masks() {
             for (int query = 0; query < (NUM_SHIPS-1) * 2; query++) {
                 int place_size = 2 + (query % (NUM_SHIPS - 1));
                 bool place_vert = query / (NUM_SHIPS - 1);
-
-                // if we are querying about placing a ship already placed
-                // we reinterpret to be about placing the ship onto an empty board.
-                //todo: broken now that sizes since place==base is possible for 2
-//                grid_t eff_base = (place_size == base_size ? 0 : base);
 
                 REQ_MASKS[base_size-2][place][place_size-2][place_vert?1:0] = 0;
                 for (int qsq = 0; qsq < BOARD_SIZE; qsq++) {
@@ -183,14 +180,19 @@ struct BSConfig2 {
 struct BSSampler {
     grid_t hits = 0;
     grid_t misses = 0;
-    grid_t hit_anchors[4] = {0};
 
-    std::atomic_uint32_t counts[BOARD_SIZE];
-    std::atomic_uint32_t total;
-    std::atomic_uint32_t its;
+    // cached masks for requiring to satisfy misses.
+    // this cannot be used for hits as we want to dynamically calculate
+    // as we satisfy misses and know what is left.
+    grid_t req_miss_masks[NUM_SHIPS-1][2] = {{0}};
 
-    std::mutex impossible_mtx;
-    std::unordered_set<uint64_t> impossible;
+    std::atomic_uint32_t counts[BOARD_SIZE] = {0};
+    std::atomic_uint32_t config_counts[BOARD_SIZE][NUM_SHIPS-1][2] = {{{0}}};
+    std::atomic_uint32_t total = 0;
+    std::atomic_uint32_t its = 0;
+
+    std::mutex impossible_mtx{};
+    std::unordered_set<uint64_t> impossible{};
 
     inline void clear() {
         impossible.clear();
@@ -203,14 +205,9 @@ struct BSSampler {
     void enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl);
     void multithread_enum();
 
-    // copied from battleship_enum.
-    void random_populate_hit_anchors(std::mt19937_64 &rng);
+    void create_miss_masks();
 
-    // returns 1 if the permuation found something
-    // 0 if it was impossible.
-    // 2 if we found a duplicate.
-    // 3 if we failed to satisfy all hits or it was impossible
-    int try_random(std::mt19937_64 &rng);
+    void try_random(std::mt19937_64 &rng);
 
     void multithread_randsample(uint32_t max);
 };

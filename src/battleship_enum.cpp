@@ -40,6 +40,9 @@ lf buckets=576460752303423487, load=1, size=576460752303423487, buckets=10535993
 // bit 2 - enable extra checks
 template <uint8_t FLAGS>
 inline void recurse_enum(BSSampler *sampler, BSConfig2 conf, grid_t working, int ship_no, int excl, int x, int y) {
+    grid_t hit_anchors[NUM_SHIPS] = {0}; // TODO: STUB =================================================
+
+
     grid_t mask;
     const int size = SHIP_SIZES[ship_no];
 
@@ -55,7 +58,7 @@ inline void recurse_enum(BSSampler *sampler, BSConfig2 conf, grid_t working, int
         goto skip_horiz;
     mask = shift2d(HMASKS[size - 2], x, y);
     if (FLAGS & 4 && (mask & sampler->misses // blocked by "miss" marker
-                      || (ship_no == excl && (mask & sampler->hit_anchors[0]) != sampler->hit_anchors[0]))) // anchor 1st ship to a hit
+                      || (ship_no == excl && (mask & hit_anchors[0]) != hit_anchors[0]))) // anchor 1st ship to a hit
         goto skip_horiz;
     conf.ships[ship_no] = y * BOARD_WIDTH + x;
     sampler->enumerate(working | mask, conf, next, excl);
@@ -65,7 +68,7 @@ inline void recurse_enum(BSSampler *sampler, BSConfig2 conf, grid_t working, int
         goto skip_vert;
     mask = shift2d(VMASKS[size - 2], x, y);
     if (FLAGS & 4 && (mask & sampler->misses
-                      || (ship_no == excl && (mask & sampler->hit_anchors[0]) != sampler->hit_anchors[0])))
+                      || (ship_no == excl && (mask & hit_anchors[0]) != hit_anchors[0])))
         goto skip_vert;
     conf.ships[ship_no] = 100 + y * BOARD_WIDTH + x;
     sampler->enumerate(working | mask, conf, next, excl);
@@ -75,6 +78,9 @@ inline void recurse_enum(BSSampler *sampler, BSConfig2 conf, grid_t working, int
 
 
 void BSSampler::multithread_enum() {
+    grid_t hit_anchors[NUM_SHIPS] = {0}; // TODO: STUB =================================================
+
+
     std::vector<std::thread> threads;
     int conc = std::thread::hardware_concurrency();
     std::cout << "launching " << conc << " threads\n";
