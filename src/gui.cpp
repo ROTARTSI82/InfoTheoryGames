@@ -99,9 +99,8 @@ int run_battleship()
 
     grid_t occ_ships[NUM_SHIPS] = {0};
     BSSampler sampler{};
+    sampler.create_miss_masks(false);
     int maxIt = 0;
-    float maxprob = 1.0;
-    int maxprob_sq = 0;
     std::random_device dev;
     std::mt19937_64 rng(dev());
     while (!done)
@@ -170,39 +169,25 @@ int run_battleship()
                 grid_t totocc = 0;
                 for (int i = 0; i < NUM_SHIPS; i++)
                     totocc |= occ_ships[i];
-                if (mk_mask(maxprob_sq) & totocc)
-                    sampler.hits |= mk_mask(maxprob_sq);
+                if (mk_mask(sampler.next_guess_sq) & totocc)
+                    sampler.hits |= mk_mask(sampler.next_guess_sq);
                 else
-                    sampler.misses |= mk_mask(maxprob_sq);
+                    sampler.misses |= mk_mask(sampler.next_guess_sq);
                 std::cout << "nextMove\n";
             }
             ImGui::SameLine();
             if (ImGui::Button("Calculate Random Sample")) {
                 sampler.clear();
-                sampler.create_miss_masks();
+                sampler.create_miss_masks(true);
                 sampler.multithread_randsample(maxIt);
-                maxprob = 0;
-                for (int s = 0; s < BOARD_SIZE; s++) {
-                    float p = sampler.counts[s] / (float) sampler.total;
-                    if (p > maxprob && p < 1) {
-                        maxprob_sq = s;
-                        maxprob = p;
-                    }
-                }
+                sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
             if (ImGui::Button("Enumerate")) {
                 sampler.clear();
-                sampler.create_miss_masks();
+                sampler.create_miss_masks(true);
                 sampler.multithread_enum();
-                maxprob = 0;
-                for (int s = 0; s < BOARD_SIZE; s++) {
-                    float p = sampler.counts[s] / (float) sampler.total;
-                    if (p > maxprob && p < 1) {
-                        maxprob_sq = s;
-                        maxprob = p;
-                    }
-                }
+                sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
 
@@ -213,8 +198,8 @@ int run_battleship()
                 for (int sq = 0; sq < BOARD_SIZE; sq++) {
                     ImGui::PushID(sq);
                     ImGui::TableNextColumn();
-                    float prob = sampler.counts[sq] / (float) sampler.total.load();
-                    ImVec4 col = ImVec4(prob/maxprob, 1.0 - prob/maxprob, 0.0, 1.0);
+                    auto prob = static_cast<float>(sampler.probs[sq]);
+                    ImVec4 col = ImVec4(prob, 1.0f - prob, 0.0, 1.0);
                     ImGui::TextColored(col, "Prob: %f", prob);
 
                     for (int shp = 0; shp < NUM_SHIPS; shp++) {

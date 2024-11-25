@@ -29,7 +29,7 @@ void test_enum() {
 
     for (int y = 0; y < BOARD_HEIGHT; y++) {
         for (int x = 0; x < BOARD_WIDTH; x++) {
-            float prob = e.counts[y * BOARD_WIDTH + x] / (float) e.total;
+            float prob = e.probs[y * BOARD_WIDTH + x] / (float) e.total;
             std::cout << '\t' << prob;
         }
         std::cout << '\n';
@@ -52,7 +52,7 @@ void test_randsample() {
             e.misses |= mk_mask(dist(rng));
     }
 
-    e.create_miss_masks();
+    e.create_miss_masks(false);
 
     std::cout << "===== [ HITS ] =====\n";
     dump_board(e.hits, true);
@@ -76,7 +76,7 @@ void test_randsample() {
 
     for (int y = 0; y < BOARD_WIDTH; y++) {
         for (int x = 0; x < BOARD_WIDTH; x++) {
-            std::cout << '\t' << std::setprecision(3) << static_cast<double>(e.counts[y * BOARD_WIDTH + x]) / e.total;
+            std::cout << '\t' << std::setprecision(3) << static_cast<double>(e.probs[y * BOARD_WIDTH + x]) / e.total;
         }
         std::cout << '\n';
     }

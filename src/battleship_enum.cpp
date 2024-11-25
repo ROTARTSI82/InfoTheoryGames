@@ -133,7 +133,7 @@ void BSSampler::enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl)
         // for (int x = 0; x < NUM_SHIPS; x++)
         //     grid[x][conf.ships[x]]++;
         for (int i = 0; i < 5+4+3+3+2; i++) {
-            counts[countr_zero(working)]++;
+            probs[countr_zero(working)]++;
             working &= working - 1;
         }
         return;

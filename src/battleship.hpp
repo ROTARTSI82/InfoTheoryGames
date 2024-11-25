@@ -184,30 +184,40 @@ struct BSSampler {
     // cached masks for requiring to satisfy misses.
     // this cannot be used for hits as we want to dynamically calculate
     // as we satisfy misses and know what is left.
-    grid_t req_miss_masks[NUM_SHIPS-1][2] = {{0}};
+    grid_t req_miss_masks[NUM_SHIPS-1][2] = {{~static_cast<grid_t>(0)}};
 
-    std::atomic_uint32_t counts[BOARD_SIZE] = {0};
-    std::atomic_uint32_t config_counts[BOARD_SIZE][NUM_SHIPS-1][2] = {{{0}}};
+    // TODO: need to upgrade to 64_t for full enum of all 30bil positions?
+    std::atomic_uint32_t config_counts[BOARD_SIZE*2][NUM_SHIPS-1] = {{0}};
     std::atomic_uint32_t total = 0;
     std::atomic_uint32_t its = 0;
 
+    int hit_anchor_sq = -1; // only for first ship placed.
+
     std::mutex impossible_mtx{};
     std::unordered_set<uint64_t> impossible{};
+
+    double probs[BOARD_SIZE] = {0};
+    int next_guess_sq = -1;
 
     inline void clear() {
         impossible.clear();
         total = 0;
         its = 0;
-        for (int x = 0; x < BOARD_SIZE; x++)
-            counts[x] = 0;
+        for (double & prob : probs)
+            prob = 0;
+        for (auto &config_count : config_counts)
+            for (auto &y : config_count)
+                y = 0;
     }
 
     void enumerate(grid_t working, BSConfig2 conf, int ship_no, int excl);
     void multithread_enum();
 
-    void create_miss_masks();
+    void create_miss_masks(bool use_config_counts);
 
     void try_random(std::mt19937_64 &rng);
+
+    void config_to_probs();
 
     void multithread_randsample(uint32_t max);
 };
