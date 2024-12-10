@@ -80,10 +80,10 @@ enterPhase readyFunc = do
 
 gamePhase :: Builder -> [String] -> Int -> (String -> IO ()) -> IO ()
 gamePhase builder datas expectedLength next = do
-    guess        <- builderGetObject builder castToEntry "guess"
-    mostLikely   <- builderGetObject builder castToEntry "mostLikely"
-    sndMostLikely   <- builderGetObject builder castToEntry "sndMostLikely"
-    expectedInfo <- builderGetObject builder castToEntry "expectedInfo"
+    guess         <- builderGetObject builder castToEntry "guess"
+    mostLikely    <- builderGetObject builder castToEntry "mostLikely"
+    sndMostLikely <- builderGetObject builder castToEntry "sndMostLikely"
+    expectedInfo  <- builderGetObject builder castToEntry "expectedInfo"
 
     input <- builderGetObject builder castToEntry "input"
     entrySetText input ""

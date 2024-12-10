@@ -80,3 +80,7 @@ need to push this before I mess everything up.
 
 * Made it so that it's not possible to proceed unless the inputted text is the correct length. Also, there's a second
 most likely printed, so you know what other options there are.
+
+## 0.6.1.1 -- 2024-12-10
+
+* Added some comments describing the functions.
