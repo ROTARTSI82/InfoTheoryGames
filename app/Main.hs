@@ -18,7 +18,6 @@ import Prelude          hiding ( Word )
 import qualified Data.HashMap.Strict as M
 
 import Graphics ( enterPhase, gamePhase, endPhase )
-import Control.Concurrent (yield)
 
 
 type Turn = Int

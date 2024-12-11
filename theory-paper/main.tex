@@ -19,21 +19,10 @@
 
     \section{Hangman}
 
-    Because Dr. Aiyer can lie, we are uncertain of the current game state. Let the current game state be the random variable $S$ and the word to be guessed be the random variable $W$. $W$ is a symbol chosen from the dictionary of words, weighted by relative word frequency. 
+    We consider Hangman as two different subproblems. The first is picking the optimal letter given a current game. The second is updating the game after receiving information from the user. We begin with the latter.
     
-    Since the tree of possible game state only branches due to our uncertainty of when the lie occurred, the turn number on which the lie occurs is sufficient to specify game state $S$. Thus, we can model $S$ using a geometric distribution, tuning probability $p$ such that lying towards the end of the game happens with reasonable probability.
-    \[ P(S = k) = p (1-p)^{k-1}\]
+    Since the user can lie, we are uncertain about the game state. Hence, let the current game be the random variable $S$ with probability mass function $p(s)$. Each different possible value of $S$ now represents the simplified game state given that the user lied on a specific turn, or not at all. At the beginning of the game, there is only one possible value for $S$: the \textit{truth node}. Note that the user can only lie once. Thus, as the game progresses, $S$ gains more possible values as the \textit{truth node} splits into a new \textit{truth node} and a \textit{lie node} that assumes the user lied on that turn. However, all the \textit{lie nodes} from previous turns can get filtered by the new information as if it was telling the truth. $p(s)$ is defined as a geometric distribution with $p=0.25$. It is a little arbitrary, but it works.
 
-    By playing the game, we can make further restrictions on the turns where the lie could have occurred, so we need to eventually switch to the conditional probability ``given that $S \not\in \{\text{impossible}\}$.'' To play optimal hangman, we want to make the moves that greedily minimize $H(W)$. We want to choose an easy way to calculate $H(W)$ lmfao what formula?
-
-    \begin{align*}
-        H(W,S) &= H(W) + H(S|W) \\
-        &= H(S) + H(W|S)
-    \end{align*}
-    \begin{align*}
-        I(W;S) &= H(W) - H(W|S) \\
-        &= H(S) - H(S|W) \\
-        &= H(W,S) - H(W) - H(S)
-    \end{align*}
+    For picking the optimal letter, we merely choosever whichever gives the most expected information, across all possibilities for $S$. Each word has a relative frequency sourced from the web. Since the specific value of $S$ does not matter, we condense it into a single state, with each word frequency scaled by $p(s)$ where $s$ is the node that the word is in. Identical words in different nodes are combined such that their $p(s)$ scaled frequencies are added. The phrases are flattened as well. Thus, we obtain a single structure with a random variable $W$ for each word, with a probability mass function obtained from the word frequencies. For a given letter, the expected information is found by summing $-p \log(p)$ over every different pattern in which the letter can appear, where $p$ is the sum of the probabilities of the words to which the pattern corresponds. This is looped over every letter, and whichever one yields the highest expected information is guessed.
 
 \end{document}
