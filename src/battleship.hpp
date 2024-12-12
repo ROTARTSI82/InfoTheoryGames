@@ -198,6 +198,7 @@ struct BSSampler {
 
     double probs[BOARD_SIZE] = {0};
     double max_prob = 1;
+    double sumprobs = 0;
     int next_guess_sq = -1;
 
     inline void clear() {

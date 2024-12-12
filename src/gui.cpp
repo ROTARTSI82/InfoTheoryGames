@@ -18,7 +18,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
-#include <stdio.h>
+#include <cstdio>
 #include <SDL.h>
 #include <cstdlib>
 
@@ -177,21 +177,23 @@ int run_battleship()
             }
             ImGui::SameLine();
             if (ImGui::Button("Calculate Random Sample")) {
-                sampler.clear();
                 sampler.create_miss_masks(rng, true);
+                sampler.clear();
                 sampler.multithread_randsample(maxIt);
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
             if (ImGui::Button("Enumerate")) {
-                sampler.clear();
                 sampler.create_miss_masks(rng, true);
+                sampler.clear();
                 sampler.enumerate();
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
 
             ImGui::Text("Found/Iterations: %i/%i", (unsigned) sampler.total, (unsigned) sampler.its);
+            ImGui::Text("Impossible: %i", (unsigned) sampler.impossible.size());
+            ImGui::Text("Matrix Sum: %f", sampler.sumprobs);
 
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame;
             if (ImGui::BeginTable("Battleship", BOARD_WIDTH, flags)) {
@@ -213,10 +215,20 @@ int run_battleship()
                     if (mk_mask(sq) & sampler.misses)
                         ImGui::TextColored(empty.Value, "MISS");
 
-                    if (placemode && ImGui::Button("place")) {
-                        std::cout << "place " << sq << '\n';
-                        occ_ships[to_place] = mk_ship_mask(SHIP_SIZES[to_place], place_vert, sq % BOARD_WIDTH, sq / BOARD_WIDTH);
+                    if (placemode) {
+                        if (ImGui::Button("place")) {
+                            std::cout << "place " << sq << '\n';
+                            occ_ships[to_place] = mk_ship_mask(SHIP_SIZES[to_place], place_vert, sq % BOARD_WIDTH,
+                                                               sq / BOARD_WIDTH);
+                        }
+
+                        if (ImGui::Button("hit"))
+                            sampler.hits ^= mk_mask(sq);
+                        ImGui::SameLine();
+                        if (ImGui::Button("miss"))
+                            sampler.misses ^= mk_mask(sq);
                     }
+
                     ImGui::PopID();
                 }
                 ImGui::EndTable();

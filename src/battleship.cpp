@@ -24,8 +24,10 @@ void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
                 }
 
                 assert((req_miss_masks[size][vert] & possible) == possible);
-                if (possible)
+                if (possible) {
                     req_miss_masks[size][vert] &= possible;
+                    dump_board(possible);
+                }
             }
         }
 
@@ -68,6 +70,12 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
         // we satisfy all hits.
         // TODO: this is introducing a bias of explaining the seen HITS pattern
         //       with as many ships as possible, leading to extra guessing around hits.
+        //       in fact, it's not just this: it's the entire implementation.
+        //       the fact that i'm pruning away the impossible configurations as early as possible
+        //       as I look means that after a few hits, i am not exploring configuartion
+        //       space uniformly at all (it all depends on the order I look in,
+        //       and I determine the order by just uniform random at the first level,
+        //       which is not correct!). It becomes hopelessly biased. Switch to enumeration!
         if (hit_satis)
             cand_vert = cand_horiz = 0;
         while (hit_satis) {
@@ -75,7 +83,7 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
             cand_vert |= REQ_HIT_MASKS[ship_size_idx][1][countr_zero(hit_satis)];
             hit_satis &= hit_satis - 1;
         }
-    } else if (samp.hit_anchor_sq >= 0 && N == 0) {
+    } else if (!ONLY1 && samp.hit_anchor_sq >= 0 && N == 0) {
         // only for enumeration on the first ship placed
         cand_horiz = REQ_HIT_MASKS[ship_size_idx][0][samp.hit_anchor_sq];
         cand_vert = REQ_HIT_MASKS[ship_size_idx][1][samp.hit_anchor_sq];
@@ -196,6 +204,10 @@ void BSSampler::enumerate() {
     recurse_randsample<0, false>(0, *this, conf, perm, nullptr, 0);
 }
 
+void BSSampler::multithread_enum() {
+
+}
+
 void BSSampler::multithread_randsample(uint32_t max) {
     unsigned conc = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
@@ -236,8 +248,10 @@ void BSSampler::config_to_probs() {
 
     max_prob = 0;
     next_guess_sq = -1;
+    sumprobs = 0;
     for (int sq = 0; sq < BOARD_SIZE; sq++) {
         probs[sq] /= (double) total;
+        sumprobs += probs[sq];
         if (probs[sq] > max_prob && !((hits | misses) & mk_mask(sq))) {
             max_prob = probs[sq];
             next_guess_sq = sq;

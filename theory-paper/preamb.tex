@@ -1,60 +1,46 @@
-\documentclass[12pt]{article}
+% !TeX root = main.tex
+
+\documentclass[conference,letterpaper]{IEEEtran}
 \usepackage{siunitx}
 \usepackage{amsmath}
+\usepackage{makecell}
 \usepackage{amssymb}
 \usepackage{tikz}
-\usepackage{mathtools}
-\usepackage[all]{nowidow}
-\usepackage[letterpaper]{geometry}
-\usepackage{svg}
-\usepackage{float}
-\usepackage[labelfont=bf]{caption}
-\usepackage{hyperref}
-% \renewcommand{\theequation}{Equation \arabic{equation}}
-\newcommand{\csol}{{\si{c}}}
+\usepackage{hhline}
+% \usepackage{mathtools}
+% \usepackage[all]{nowidow}
+% \usepackage[letterpaper]{geometry}
+% \usepackage{svg}
+% \usepackage{subcaption}
+% \usepackage{float}
+% \usepackage{caption}
 \usepackage[utf8]{inputenc}
-\usepackage{listings,xcolor}
+\usepackage{hyperref}
 
-\lstset{language=Mathematica}
-\lstset{basicstyle={\sffamily\footnotesize},
-  numbers=left,
-  numberstyle=\tiny\color{gray},
-  numbersep=5pt,
-  breaklines=true,
-  captionpos={t},
-  frame={lines},
-  rulecolor=\color{black},
-  framerule=0.5pt,
-  columns=flexible,
-  tabsize=2
-}
-
+% \usepackage{cite}
 \usepackage[backend=bibtex]{biblatex}
 \addbibresource{refs.bib}
 
-\newcommand{\dif}[2][{}]{{\mathrm{d}^#1 {#2}}}
-\newcommand{\diffn}[3][{}]{\frac{\mathrm{d}^{#1}{#2}}{{\mathrm{d}#3}^{#1}}}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+\usepackage{array}
+\interdisplaylinepenalty=2500
+\renewcommand{\arraystretch}{1.25}
 
-% \usepackage{blindtext}
+% *** SUBFIGURE PACKAGES ***
+\ifCLASSOPTIONcompsoc
+ \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\else
+ \usepackage[caption=false,font=footnotesize]{subfig}
+\fi
 
-\makeatletter
-\newcommand{\global@insert}[2]% #1=box number, #2=vertical list
-{\bgroup
-  \setbox\@tempboxa=\box#1
-  \global\setbox#1=\vbox{\unvbox\@tempboxa #2}
-\egroup}
+%these 3 packages are all mutually exclusive.
+%\usepackage{fixltx2e}
+% \usepackage{stfloats}
+\usepackage{dblfloatfix}
 
-\long\def\@footnotetext#1{\global@insert\footins{%
- \reset@font\footnotesize
- \interlinepenalty\interfootnotelinepenalty
- \splittopskip\footnotesep
- \splitmaxdepth \dp\strutbox \floatingpenalty \@MM
- \hsize\columnwidth \@parboxrestore
- \protected@edef\@currentlabel{%
- \csname p@footnote\endcsname\@thefnmark
- }%
- \color@begingroup
- \@makefntext{%
- \rule\z@\footnotesep\ignorespaces#1\@finalstrut\strutbox}%
- \color@endgroup}}%
-\makeatother
+\usepackage{url}
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+
