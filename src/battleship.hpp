@@ -186,8 +186,7 @@ struct BSSampler {
     // as we satisfy misses and know what is left.
     grid_t req_miss_masks[NUM_SHIPS-1][2] = {{~static_cast<grid_t>(0)}};
 
-    // TODO: need to upgrade to 64_t for full enum of all 30bil positions?
-    std::atomic_uint_fast32_t config_counts[BOARD_SIZE*2][NUM_SHIPS-1] = {{0}};
+    std::atomic_uint_fast64_t config_counts[BOARD_SIZE*2][NUM_SHIPS-1] = {{0}};
     std::atomic_uint_fast64_t total = 0;
     std::atomic_uint_fast64_t its = 0;
 

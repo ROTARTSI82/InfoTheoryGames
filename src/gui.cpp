@@ -186,12 +186,12 @@ int run_battleship()
             if (ImGui::Button("Enumerate")) {
                 sampler.create_miss_masks(rng, true);
                 sampler.clear();
-                sampler.enumerate();
+                sampler.multithread_enum();
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
 
-            ImGui::Text("Found/Iterations: %i/%i", (unsigned) sampler.total, (unsigned) sampler.its);
+            ImGui::Text("Found/Iterations: %llu/%i", sampler.total.load(std::memory_order_relaxed), (unsigned) sampler.its);
             ImGui::Text("Impossible: %i", (unsigned) sampler.impossible.size());
             ImGui::Text("Matrix Sum: %f", sampler.sumprobs);
 

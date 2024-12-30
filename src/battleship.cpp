@@ -131,15 +131,12 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
             from &= from - 1;
         }
 
-        int x = sq % BOARD_WIDTH;
-        int y = sq / BOARD_WIDTH;
-
-        grid_t mask = mk_ship_mask(size, vert, x, y);
+        grid_t mask = mk_ship_mask(size, vert, sq);
 
         assert(!(mask >> static_cast<grid_t>(BOARD_SIZE)));
         assert(popcnt(mask) == size);
         assert(popcnt(working | mask) == popcnt(working) + popcnt(mask));
-        conf.ships[ship] = (vert?BOARD_SIZE:0) + y*BOARD_WIDTH + x;
+        conf.ships[ship] = static_cast<uint8_t>((vert?BOARD_SIZE:0) + sq);
         found |= recurse_randsample<N+1, ONLY1>(working | mask, samp, conf, perm, rng, perm_id);
         if (found && ONLY1)
             return true;
@@ -150,7 +147,7 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
         samp.impossible.emplace(perm_id);
     }
 
-    if (!ONLY1 && N < 3) {
+    if (!ONLY1 && N < 2) {
         std::cout << "tot = " << samp.total.load(std::memory_order_relaxed) << '\n';
     }
 
@@ -206,6 +203,73 @@ void BSSampler::enumerate() {
 
 void BSSampler::multithread_enum() {
 
+    // pair of (what ship) + (what square + [BOARD_SIZE if vert]) to enumerate
+    std::vector<std::pair<int, int>> cands;
+    std::mutex cand_mtx;
+
+    for (int s : SHIP_SIZES) {
+        int i = s - 2;
+        grid_t cand_horiz = req_miss_masks[i][0];
+        grid_t cand_vert = req_miss_masks[i][1];
+
+        if (hit_anchor_sq >= 0) {
+            cand_vert &= REQ_HIT_MASKS[i][1][hit_anchor_sq];
+            cand_horiz &= REQ_HIT_MASKS[i][0][hit_anchor_sq];
+        } else if (i > 0) {
+            // if there are no hit anchors, we only need to consider one placing permutation
+            continue;
+        }
+
+        while (cand_horiz) {
+            cands.emplace_back(s, countr_zero(cand_horiz));
+            cand_horiz &= cand_horiz - 1;
+        }
+
+        while (cand_vert) {
+            cands.emplace_back(s, BOARD_SIZE + countr_zero(cand_vert));
+            cand_vert &= cand_vert - 1;
+        }
+    }
+
+    for (auto &c : cands) {
+        std::cout << "[" << c.first << ", " << c.second << "], ";
+    }
+    std::cout << std::endl;
+
+    unsigned conc = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+    threads.reserve(conc);
+    for (unsigned i = 0; i < conc; i++)
+        threads.emplace_back([&, this]() {
+            while (true) {
+                std::pair<int, int> task;
+                {
+                    std::lock_guard<std::mutex> lg(cand_mtx);
+                    if (cands.empty()) {
+                        std::cout << "return " << std::this_thread::get_id() << '\n';
+                        return;
+                    }
+                    task = cands.back();
+                    cands.pop_back();
+                }
+
+                std::cout << std::this_thread::get_id() << "\t[" << task.first << ", " << task.second << "]\n";
+
+                int sq = task.second % BOARD_SIZE;
+                bool vert = task.second / BOARD_SIZE > 0;
+                grid_t working = mk_ship_mask(SHIP_SIZES[task.first], vert, sq);
+
+                BSConfig2 conf{};
+                conf.ships[task.first] = task.second;
+                int perm[] = {0, 1, 2, 3, 4};
+                if (task.first != 0)
+                    std::swap(perm[0], perm[task.first]);
+                recurse_randsample<1, false>(working, *this, conf, perm, nullptr, 0);
+            }
+        });
+
+    for (auto &t: threads)
+        t.join();
 }
 
 void BSSampler::multithread_randsample(uint32_t max) {
@@ -235,7 +299,8 @@ void BSSampler::config_to_probs() {
     for (int sq = 0; sq < BOARD_SIZE; sq++)
         for (int vert = 0; vert < 2; vert++)
             for (int size = 0; size < NUM_SIZES; size++) {
-                uint64_t inc = config_counts[sq + vert * BOARD_SIZE][size];
+                uint_fast64_t inc = config_counts[sq + vert * BOARD_SIZE][size]
+                        .load(std::memory_order_relaxed);
                 if (!inc)
                     continue;
                 grid_t mask = mk_ship_mask(2+size, vert, sq);
