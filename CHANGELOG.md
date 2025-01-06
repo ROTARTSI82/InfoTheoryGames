@@ -84,3 +84,7 @@ most likely printed, so you know what other options there are.
 ## 0.6.1.1 -- 2024-12-10
 
 * Added some comments describing the functions.
+
+## 0.7.0.0 -- 2025-1-6
+
+* The code actually follows the input/output instructions now. No more GUI :( 
