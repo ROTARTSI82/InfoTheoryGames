@@ -20,6 +20,7 @@ constexpr int NUM_SIZES = 4;
 constexpr int BOARD_WIDTH = 10;
 constexpr int BOARD_HEIGHT = 10;
 constexpr int BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT;
+constexpr grid_t FULL_BB = ~static_cast<grid_t>(0);
 
 inline constexpr grid_t mk_mask(int n) {
     return static_cast<grid_t>(1) << static_cast<grid_t>(n);
@@ -185,6 +186,7 @@ struct BSSampler {
     // this cannot be used for hits as we want to dynamically calculate
     // as we satisfy misses and know what is left.
     grid_t req_miss_masks[NUM_SHIPS-1][2] = {{~static_cast<grid_t>(0)}};
+    grid_t req_sunk_masks[NUM_SHIPS] = {FULL_BB, FULL_BB, FULL_BB, FULL_BB, FULL_BB};
 
     std::atomic_uint_fast64_t config_counts[BOARD_SIZE*2][NUM_SHIPS-1] = {{0}};
     std::atomic_uint_fast64_t total = 0;
@@ -213,6 +215,11 @@ struct BSSampler {
 
     void enumerate();
     void multithread_enum();
+
+    inline void sunk(int ship, int sq) {
+        int size_idx = SHIP_SIZES[ship] - 2;
+        req_sunk_masks[ship] = REQ_HIT_MASKS[size_idx][1][sq] | REQ_HIT_MASKS[size_idx][0][sq];
+    }
 
     void create_miss_masks(std::mt19937_64 &rng, bool use_config_counts);
 

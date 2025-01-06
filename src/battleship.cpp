@@ -17,6 +17,7 @@ void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
             req_miss_masks[size][vert] = REQ_HIT_MASKS[size][vert][BOARD_SIZE];
 
             if (use_counts) {
+                std::cout << "usecounts\n";
                 grid_t possible = 0;
                 for (int sq = 0; sq < BOARD_SIZE; sq++) {
                     if (config_counts[vert * BOARD_SIZE + sq][size] > 0)
@@ -26,7 +27,7 @@ void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
                 assert((req_miss_masks[size][vert] & possible) == possible);
                 if (possible) {
                     req_miss_masks[size][vert] &= possible;
-                    dump_board(possible);
+                    //dump_board(possible);
                 }
             }
         }
@@ -46,6 +47,12 @@ void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
     } else {
         hit_anchor_sq = -1;
     }
+
+    for (int i = 0; i < NUM_SIZES; i++)
+        for (int j = 0; j < 2; j++) {
+            std::cout << "req_miss " << i << ',' << j << '\n';
+            dump_board(req_miss_masks[i][j]);
+        }
 }
 
 template <unsigned N, bool ONLY1>
@@ -85,12 +92,13 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
         }
     } else if (!ONLY1 && samp.hit_anchor_sq >= 0 && N == 0) {
         // only for enumeration on the first ship placed
+        std::cout << "hit anchor " << samp.hit_anchor_sq << '\n';
         cand_horiz = REQ_HIT_MASKS[ship_size_idx][0][samp.hit_anchor_sq];
         cand_vert = REQ_HIT_MASKS[ship_size_idx][1][samp.hit_anchor_sq];
     }
 
-    cand_vert &= samp.req_miss_masks[ship_size_idx][1];
-    cand_horiz &= samp.req_miss_masks[ship_size_idx][0];
+    cand_vert &= samp.req_miss_masks[ship_size_idx][1] & samp.req_sunk_masks[ship];
+    cand_horiz &= samp.req_miss_masks[ship_size_idx][0] & samp.req_sunk_masks[ship];
 
     for (unsigned i = 0; i < N; i++) {
         int idx = perm[i];
@@ -198,7 +206,17 @@ void BSSampler::try_random(std::mt19937_64 &rng) {
 void BSSampler::enumerate() {
     BSConfig2 conf{};
     int perm[] = {0, 1, 2, 3, 4};
-    recurse_randsample<0, false>(0, *this, conf, perm, nullptr, 0);
+    if (hit_anchor_sq == -1)
+        recurse_randsample<0, false>(0, *this, conf, perm, nullptr, 0);
+    else {
+        for (int i = 0; i < NUM_SHIPS; i++) {
+            if (i != 0)
+                std::swap(perm[i], perm[0]);
+            recurse_randsample<0, false>(0, *this, conf, perm, nullptr, 0);
+            if (i != 0)
+                std::swap(perm[i], perm[0]);
+        }
+    }
 }
 
 void BSSampler::multithread_enum() {

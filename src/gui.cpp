@@ -99,10 +99,20 @@ int run_battleship()
 
     grid_t occ_ships[NUM_SHIPS] = {0};
     BSSampler sampler{};
+    BSConfig2 true_conf{};
+    grid_t sunk_occ = 0;
+    bool sunk[NUM_SHIPS] = {false, false, false, false, false};
     int maxIt = 0;
     std::random_device dev;
     std::mt19937_64 rng(dev());
     sampler.create_miss_masks(rng, false);
+
+    bool use_config_counts = false;
+    bool placemode = true;
+    bool place_vert = false;
+    int to_place = 0;
+    int turn_no = 0;
+
     while (!done)
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -118,6 +128,24 @@ int run_battleship()
                 done = true;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 done = true;
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.scancode) {
+                    case SDL_SCANCODE_S:
+                        placemode ^= true;
+                        break;
+                    case SDL_SCANCODE_V:
+                        place_vert ^= true;
+                        break;
+                    case SDL_SCANCODE_RIGHT:
+                        to_place = std::min(4, to_place + 1);
+                        break;
+                    case SDL_SCANCODE_LEFT:
+                        to_place = std::max(0, to_place - 1);
+                        break;
+                    default:
+                        ;
+                }
+            }
         }
         if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)
         {
@@ -140,9 +168,6 @@ int run_battleship()
             static int counter = 0;
 
             ImGui::Begin("Battleship!");
-            static int to_place = 0;
-            static bool placemode = true;
-            static bool place_vert = false;
 
             ImGui::Text("Ship to place (by size)");
             constexpr std::array<std::string, NUM_SHIPS> names = {"Carrier ", "Battleship ", "Destroyer ", "Submarine ", "Patrol Boat "}; 
@@ -161,39 +186,58 @@ int run_battleship()
             ImGui::Separator();
 
             ImGui::Checkbox("Ship Placing Mode", &placemode);
+            ImGui::SameLine();
             ImGui::Checkbox("Place Vertically", &place_vert);
+            ImGui::SameLine();
+            ImGui::Checkbox("Prune", &use_config_counts);
 
             ImGui::SliderInt("Num Iterations", &maxIt, 1, 4096*128);
 
             if (ImGui::Button("Next Move")) {
                 grid_t totocc = 0;
+                turn_no++;
                 for (int i = 0; i < NUM_SHIPS; i++)
                     totocc |= occ_ships[i];
-                if (mk_mask(sampler.next_guess_sq) & totocc)
+
+                std::cout << "Next move: " << sampler.next_guess_sq << '\n';
+                if (mk_mask(sampler.next_guess_sq) & totocc) {
                     sampler.hits |= mk_mask(sampler.next_guess_sq);
-                else
+                    // find if sunk:
+                    for (int ship_test = 0; ship_test < NUM_SHIPS; ship_test++) {
+                        int conf = true_conf.ships[ship_test];
+                        grid_t mask = mk_ship_mask(SHIP_SIZES[ship_test], conf / BOARD_SIZE, conf % BOARD_SIZE);
+                        if (!sunk[ship_test] && (mask & sampler.hits) == mask) {
+                            sunk[ship_test] = true;
+                            sunk_occ |= mk_mask(sampler.next_guess_sq);
+                            sampler.sunk(ship_test, sampler.next_guess_sq);
+                            break;
+                        }
+                    }
+                } else {
                     sampler.misses |= mk_mask(sampler.next_guess_sq);
+                }
                 std::cout << "nextMove\n";
             }
             ImGui::SameLine();
             if (ImGui::Button("Calculate Random Sample")) {
-                sampler.create_miss_masks(rng, true);
+                sampler.create_miss_masks(rng, use_config_counts);
                 sampler.clear();
                 sampler.multithread_randsample(maxIt);
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
             if (ImGui::Button("Enumerate")) {
-                sampler.create_miss_masks(rng, true);
+                sampler.create_miss_masks(rng, use_config_counts);
                 sampler.clear();
-                sampler.multithread_enum();
+//                sampler.multithread_enum();
+                sampler.enumerate();
                 sampler.config_to_probs();
                 std::cout << "randsample\n";
             }
 
             ImGui::Text("Found/Iterations: %llu/%i", sampler.total.load(std::memory_order_relaxed), (unsigned) sampler.its);
             ImGui::Text("Impossible: %i", (unsigned) sampler.impossible.size());
-            ImGui::Text("Matrix Sum: %f", sampler.sumprobs);
+            ImGui::Text("Matrix Sum: %f\tTurn no: %i", sampler.sumprobs, turn_no);
 
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame;
             if (ImGui::BeginTable("Battleship", BOARD_WIDTH, flags)) {
@@ -210,9 +254,12 @@ int run_battleship()
                             break;
                         }
                     }
-                    if (mk_mask(sq) & sampler.hits)
-                            ImGui::TextColored(ImVec4(1,0,0,1), "HIT");
-                    if (mk_mask(sq) & sampler.misses)
+
+                    if (mk_mask(sq) & sunk_occ)
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "SUNK");
+                    else if (mk_mask(sq) & sampler.hits)
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "HIT");
+                    else if (mk_mask(sq) & sampler.misses)
                         ImGui::TextColored(empty.Value, "MISS");
 
                     if (placemode) {
@@ -220,6 +267,7 @@ int run_battleship()
                             std::cout << "place " << sq << '\n';
                             occ_ships[to_place] = mk_ship_mask(SHIP_SIZES[to_place], place_vert, sq % BOARD_WIDTH,
                                                                sq / BOARD_WIDTH);
+                            true_conf.ships[to_place] = sq;
                         }
 
                         if (ImGui::Button("hit"))
