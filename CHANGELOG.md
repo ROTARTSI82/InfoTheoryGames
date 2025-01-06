@@ -87,4 +87,8 @@ most likely printed, so you know what other options there are.
 
 ## 0.7.0.0 -- 2025-1-6
 
-* The code actually follows the input/output instructions now. No more GUI :( 
+* The code actually follows the input/output instructions now. No more GUI :(
+
+## 0.7.0.1 -- 2025-1-6
+
+* Added comments back to the code. 
