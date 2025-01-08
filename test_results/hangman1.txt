@@ -1,0 +1,69 @@
+1. Length of phrase (including spaces)?
+17
+2. Location of spaces (separated by whitespace and indexed from 1)?
+6 10             
+Most Likely: about the because
+Second Most Likely: their and through
+3. e? Expected information: 7.294066318296917
+..... ... .....e.
+Most Likely: about and through
+Second Most Likely: which for another
+4. a? Expected information: 5.965930413375029
+..a.. a.. .......
+Most Likely: which and through
+Second Most Likely: would for problem
+5. o? Expected information: 5.290821443202266
+..... ... .......
+Most Likely: which and minutes
+Second Most Likely: start all further
+6. i? Expected information: 5.435581187954112
+..... ... ...i...
+Most Likely: start and officer
+Second Most Likely: small all further
+7. t? Expected information: 4.77516635754432
+.t... ... .t.....            
+Most Likely: stand and strikes
+Second Most Likely: staff all striker
+8. s? Expected information: 3.2057872379096493
+s...s ... s.....s
+Most Likely: stars and strikes
+Second Most Likely: stays all stripes
+9. n? Expected information: 1.6762932370288643
+..... .n. .......
+Most Likely: stars and strikes
+Second Most Likely: stays all stripes
+10. y? Expected information: 0.9318174558662624
+..... ... ....... 
+Most Likely: stars and strikes
+Second Most Likely: stays all stripes
+11. k? Expected information: 0.9315733381423911
+..... ... .......
+Most Likely: stars and stripes
+Second Most Likely: stays all strikes
+12. d? Expected information: 1.2080812577178497
+..... ..d .......
+Most Likely: stars and stripes
+Second Most Likely: stays und strikes
+13. p? Expected information: 0.9510421279333107
+..... ... ....p..
+Most Likely: stars and stripes
+Second Most Likely: stays und strives
+14. r? Expected information: 0.2577845770342284
+...r. ... ..r....
+Most Likely: stars and stripes
+Second Most Likely: stars amd strives
+15. p? Expected information: 0.20850759664202184
+..... ... ....p..
+Most Likely: stars and stripes
+Second Most Likely: stars amd stripes
+16. n? Expected information: 6.9490265510070825e-3
+..... .n. .......
+Most Likely: stars and stripes
+Second Most Likely: stars ang stripes
+17. d? Expected information: 4.321871586052909e-3
+..... ..d .......
+Most Likely: stars and stripes
+Second Most Likely: stars and stripes
+18. Is the phrase (y/n): stars and stripes
+y
+OK

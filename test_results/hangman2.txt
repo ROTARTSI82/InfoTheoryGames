@@ -1,0 +1,45 @@
+1. Length of phrase (including spaces)?
+28
+2. Location of spaces (separated by whitespace and indexed from 1)?
+12 19 22
+Most Likely: information people to people
+Second Most Likely: development should of should
+3. e? Expected information: 11.458405861856436
+........... ..e... .. ......
+Most Likely: information should to should
+Second Most Likely: association around of around
+4. o? Expected information: 9.958829449447517
+...o.....o. ...o.. .. ......
+Most Likely: information almost in always
+Second Most Likely: association pretty is things
+5. a? Expected information: 7.965428925090487
+......a.... ...... .. a.....
+Most Likely: information pretty in things
+Second Most Likely: frustrating strong is during
+6. t? Expected information: 6.0709435491907335
+.......t... t..... .. ......
+Most Likely: information theory in during
+Second Most Likely: psychiatric thrown is public
+7. i? Expected information: 4.2686844116117895
+i.......i.. ...... i. ......
+Most Likely: information theory in albums
+Second Most Likely: information thrown is asylum
+8. s? Expected information: 3.691248258275461
+........... ...... .s ..s...
+Most Likely: information theory is absurd
+Second Most Likely: information thrown in auburn
+9. n? Expected information: 1.9134458840820576
+.n........n ...... .. ......
+Most Likely: information theory is absurd
+Second Most Likely: information tumour if argyll
+10. s? Expected information: 0.41527186621391005
+........... ...... .s ..s...
+Most Likely: information theory is absurd
+Second Most Likely: information tumour is absurd
+11. e? Expected information: 0.38346130491224695
+........... ..e... .. ......
+Most Likely: information theory is absurd
+Second Most Likely: information theory is absurd
+12. Is the phrase (y/n): information theory is absurd
+y
+OK

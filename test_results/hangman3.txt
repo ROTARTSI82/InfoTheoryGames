@@ -1,0 +1,61 @@
+1. Length of phrase (including spaces)?
+30
+2. Location of spaces (separated by whitespace and indexed from 1)?
+4 14 21
+Most Likely: the something people something
+Second Most Likely: and different should different
+3. e? Expected information: 13.364941491706139
+..e ......... ...e.. .........
+Most Likely: the including should including
+Second Most Likely: and following around following
+4. a? Expected information: 10.709029046941396
+... .a.....a. ...... a...a....
+Most Likely: the including should including
+Second Most Likely: for following things following
+5. o? Expected information: 10.957346475708626
+... ......... ...... .........
+Most Likely: the including friend including
+Second Most Likely: one difficult others animation
+6. i? Expected information: 9.90795199566664
+... ......... ...... .........
+Most Likely: the macmillan myself awkwardly
+Second Most Likely: she satirical others actuality
+7. u? Expected information: 6.194453374722016
+... ......... ...... .........
+Most Likely: the macmillan myself awkwardly
+Second Most Likely: she satirical others animating
+8. r? Expected information: 4.48944992453763
+... ......... ...... .....r...
+Most Likely: the macmillan myself awkwardly
+Second Most Likely: she baptismal moment awkwardly
+9. l? Expected information: 3.9626435191159937
+... ......... ....l. .......l.
+Most Likely: the tactician myself awkwardly
+Second Most Likely: she yachtsman itself awkwardly
+10. t? Expected information: 2.379411251798252
+t.. ....t.... ...... .........
+Most Likely: the yachtsman myself awkwardly
+Second Most Likely: tie yachtsman models awkwardly
+11. s? Expected information: 0.5613072258262917
+... .....s... .....s .........
+Most Likely: the yachtsman models awkwardly
+Second Most Likely: tie yachtsman novels awkwardly
+12. d? Expected information: 0.8287222581208371
+... ......... ..d... ......d..
+Most Likely: the yachtsman models awkwardly
+Second Most Likely: tie yachtsman yodels awkwardly
+13. m? Expected information: 1.0731893021803855e-2
+... ......m.. ...... .........
+Most Likely: the yachtsman yodels awkwardly
+Second Most Likely: tie yachtsman indels awkwardly
+14. i? Expected information: 0.9224862434382837
+... ......... ...... .........
+Most Likely: the yachtsman yodels awkwardly
+Second Most Likely: toe yachtsman yodels awkwardly
+15. h? Expected information: 1.3420590303003855e-3
+.h. ...h..... ...... .........
+Most Likely: the yachtsman yodels awkwardly
+Second Most Likely: the yachtsman yodels awkwardly
+16. Is the phrase (y/n): the yachtsman yodels awkwardly
+y
+OK
