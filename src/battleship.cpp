@@ -17,7 +17,6 @@ void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
             req_miss_masks[size][vert] = REQ_HIT_MASKS[size][vert][BOARD_SIZE];
 
             if (use_counts) {
-                std::cout << "usecounts\n";
                 grid_t possible = 0;
                 for (int sq = 0; sq < BOARD_SIZE; sq++) {
                     if (config_counts[vert * BOARD_SIZE + sq][size] > 0)
@@ -48,11 +47,11 @@ void BSSampler::create_miss_masks(std::mt19937_64 &rng, bool use_counts) {
         hit_anchor_sq = -1;
     }
 
-    for (int i = 0; i < NUM_SIZES; i++)
-        for (int j = 0; j < 2; j++) {
-            std::cout << "req_miss " << i << ',' << j << '\n';
-            dump_board(req_miss_masks[i][j]);
-        }
+//    for (int i = 0; i < NUM_SIZES; i++)
+//        for (int j = 0; j < 2; j++) {
+//            std::cout << "req_miss " << i << ',' << j << '\n';
+//            dump_board(req_miss_masks[i][j]);
+//        }
 }
 
 template <unsigned N, bool ONLY1>
@@ -92,7 +91,7 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
         }
     } else if (!ONLY1 && samp.hit_anchor_sq >= 0 && N == 0) {
         // only for enumeration on the first ship placed
-        std::cout << "hit anchor " << samp.hit_anchor_sq << '\n';
+//        std::cout << "hit anchor " << samp.hit_anchor_sq << '\n';
         cand_horiz = REQ_HIT_MASKS[ship_size_idx][0][samp.hit_anchor_sq];
         cand_vert = REQ_HIT_MASKS[ship_size_idx][1][samp.hit_anchor_sq];
     }
@@ -155,9 +154,9 @@ bool recurse_randsample(grid_t working, BSSampler &samp, BSConfig2 &conf,
         samp.impossible.emplace(perm_id);
     }
 
-    if (!ONLY1 && N < 2) {
-        std::cout << "tot = " << samp.total.load(std::memory_order_relaxed) << '\n';
-    }
+//    if (!ONLY1 && N < 2) {
+//        std::cout << "tot = " << samp.total.load(std::memory_order_relaxed) << '\n';
+//    }
 
     return found;
 }
@@ -249,11 +248,6 @@ void BSSampler::multithread_enum() {
         }
     }
 
-    for (auto &c : cands) {
-        std::cout << "[" << c.first << ", " << c.second << "], ";
-    }
-    std::cout << std::endl;
-
     unsigned conc = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(conc);
@@ -263,15 +257,13 @@ void BSSampler::multithread_enum() {
                 std::pair<int, int> task;
                 {
                     std::lock_guard<std::mutex> lg(cand_mtx);
-                    if (cands.empty()) {
-                        std::cout << "return " << std::this_thread::get_id() << '\n';
+                    if (cands.empty())
                         return;
-                    }
                     task = cands.back();
                     cands.pop_back();
                 }
 
-                std::cout << std::this_thread::get_id() << "\t[" << task.first << ", " << task.second << "]\n";
+//                std::cout << std::this_thread::get_id() << "\t[" << task.first << ", " << task.second << "]\n";
 
                 int sq = task.second % BOARD_SIZE;
                 bool vert = task.second / BOARD_SIZE > 0;
@@ -301,8 +293,8 @@ void BSSampler::multithread_randsample(uint32_t max) {
             while (total < max) {
                 try_random(rng);
                 its++;
-                if (its % 4096 == 0)
-                    std::cout << "prog = " << total << " / " << its << std::endl;
+//                if (its % 4096 == 0)
+//                    std::cout << "prog = " << total << " / " << its << std::endl;
             }
         });
 
@@ -340,4 +332,8 @@ void BSSampler::config_to_probs() {
             next_guess_sq = sq;
         }
     }
+
+    int x = 9 - (next_guess_sq % BOARD_WIDTH);
+    int y = 1 + (next_guess_sq / BOARD_WIDTH);
+    std::cout << "(" << x << ", " << y << ")?\n";
 }

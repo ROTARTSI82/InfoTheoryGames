@@ -199,24 +199,30 @@ int run_battleship()
                 for (int i = 0; i < NUM_SHIPS; i++)
                     totocc |= occ_ships[i];
 
-                std::cout << "Next move: " << sampler.next_guess_sq << '\n';
                 if (mk_mask(sampler.next_guess_sq) & totocc) {
                     sampler.hits |= mk_mask(sampler.next_guess_sq);
                     // find if sunk:
                     for (int ship_test = 0; ship_test < NUM_SHIPS; ship_test++) {
                         int conf = true_conf.ships[ship_test];
                         grid_t mask = mk_ship_mask(SHIP_SIZES[ship_test], conf / BOARD_SIZE, conf % BOARD_SIZE);
+//                        dump_board(mask & sampler.hits);
                         if (!sunk[ship_test] && (mask & sampler.hits) == mask) {
                             sunk[ship_test] = true;
                             sunk_occ |= mk_mask(sampler.next_guess_sq);
                             sampler.sunk(ship_test, sampler.next_guess_sq);
-                            break;
+                            std::cout << "SUNK " << ship_test << '\n';
+                            goto break_skip_printhit;
                         }
                     }
+
+                    std::cout << "HIT\n";
+
+                break_skip_printhit:
+                    ;
                 } else {
                     sampler.misses |= mk_mask(sampler.next_guess_sq);
+                    std::cout << "MISS\n";
                 }
-                std::cout << "nextMove\n";
             }
             ImGui::SameLine();
             if (ImGui::Button("Calculate Random Sample")) {
@@ -224,7 +230,6 @@ int run_battleship()
                 sampler.clear();
                 sampler.multithread_randsample(maxIt);
                 sampler.config_to_probs();
-                std::cout << "randsample\n";
             }
             if (ImGui::Button("Enumerate")) {
                 sampler.create_miss_masks(rng, use_config_counts);
@@ -232,7 +237,6 @@ int run_battleship()
 //                sampler.multithread_enum();
                 sampler.enumerate();
                 sampler.config_to_probs();
-                std::cout << "randsample\n";
             }
 
             ImGui::Text("Found/Iterations: %llu/%i", sampler.total.load(std::memory_order_relaxed), (unsigned) sampler.its);
@@ -264,10 +268,14 @@ int run_battleship()
 
                     if (placemode) {
                         if (ImGui::Button("place")) {
-                            std::cout << "place " << sq << '\n';
                             occ_ships[to_place] = mk_ship_mask(SHIP_SIZES[to_place], place_vert, sq % BOARD_WIDTH,
                                                                sq / BOARD_WIDTH);
-                            true_conf.ships[to_place] = sq;
+                            true_conf.ships[to_place] = sq + (place_vert?BOARD_SIZE:0);
+
+                            std::cout << "shipconf ";
+                            for (unsigned char ship : true_conf.ships)
+                                std::cout << std::to_string(ship) << '\t';
+                            std::cout << '\n';
                         }
 
                         if (ImGui::Button("hit"))
