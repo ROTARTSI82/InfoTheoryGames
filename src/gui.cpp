@@ -171,7 +171,7 @@ int run_battleship()
 
             ImGui::Text("Ship to place (by size)");
             constexpr std::array<std::string, NUM_SHIPS> names = {"Carrier ", "Battleship ", "Destroyer ", "Submarine ", "Patrol Boat "}; 
-            constexpr std::array<ImColor, NUM_SHIPS> ship_colors = {ImColor(255, 255, 0), ImColor(0,255,0), ImColor(0,0,255), ImColor(0,255,255),ImColor(255,0,255)};
+            constexpr std::array<ImColor, NUM_SHIPS> ship_colors = {ImColor(255, 255, 0), ImColor(255,255,0), ImColor(255,255,0), ImColor(255,255,0),ImColor(255,255,0)};
             ImColor empty(128, 128, 128);
             for (int i = 0; i < NUM_SHIPS; i++) {
                 ImGui::PushID(i);
@@ -210,18 +210,18 @@ int run_battleship()
                             sunk[ship_test] = true;
                             sunk_occ |= mk_mask(sampler.next_guess_sq);
                             sampler.sunk(ship_test, sampler.next_guess_sq);
-                            std::cout << "SUNK " << ship_test << '\n';
+                            std::cout << "SUNK " << ship_test << " @ " << sampler.next_guess_sq << "\n\n";
                             goto break_skip_printhit;
                         }
                     }
 
-                    std::cout << "HIT\n";
+                    std::cout << "HIT " << sampler.next_guess_sq << "\n\n";
 
                 break_skip_printhit:
                     ;
                 } else {
                     sampler.misses |= mk_mask(sampler.next_guess_sq);
-                    std::cout << "MISS\n";
+                    std::cout << "MISS " << sampler.next_guess_sq << "\n\n";
                 }
             }
             ImGui::SameLine();
@@ -229,6 +229,7 @@ int run_battleship()
                 sampler.create_miss_masks(rng, use_config_counts);
                 sampler.clear();
                 sampler.multithread_randsample(maxIt);
+                std::cout << turn_no << ". ";
                 sampler.config_to_probs();
                 std::cout << std::endl;
             }
@@ -237,6 +238,7 @@ int run_battleship()
                 sampler.clear();
 //                sampler.multithread_enum();
                 sampler.enumerate();
+                std::cout << turn_no << ". ";
                 sampler.config_to_probs();
                 std::cout << "\th(x)=" << log2(static_cast<double>(sampler.total)) << '\n';
             }
@@ -251,8 +253,8 @@ int run_battleship()
                     ImGui::PushID(sq);
                     ImGui::TableNextColumn();
                     auto prob = std::min(static_cast<float>(sampler.probs[sq] / sampler.max_prob), 1.0f);
-                    ImVec4 col = ImVec4(prob, 1.0f - prob, 0.0, 1.0);
-                    ImGui::TextColored(col, "Prob: %f", sampler.probs[sq]);
+                    ImVec4 col = sq == sampler.next_guess_sq ? ImVec4(1.0f, 0.0f, 1.0f, 1.0f) : ImVec4(prob, 1.0f - prob, 0.0, 1.0);
+                    ImGui::TextColored(col, "%f", sampler.probs[sq]);
 
                     for (int shp = 0; shp < NUM_SHIPS; shp++) {
                         if (mk_mask(sq) & occ_ships[shp]) {
@@ -279,12 +281,27 @@ int run_battleship()
                                 std::cout << std::to_string(ship) << '\t';
                             std::cout << '\n';
                         }
-
-                        if (ImGui::Button("hit"))
-                            sampler.hits ^= mk_mask(sq);
                         ImGui::SameLine();
-                        if (ImGui::Button("miss"))
+                        if (ImGui::Button("sunk")) {
+                            sunk[to_place] ^= true;
+                            sunk_occ ^= mk_mask(sq);
+                            if (sunk[to_place]) {
+                                sampler.sunk(to_place, sq);
+                            } else {
+                                sampler.req_sunk_masks[to_place] = FULL_BB;
+                            }
+                            std::cout << (sunk[to_place]?"SUNK ":"UNSUNK ") << to_place << " @ " << sq << "\n\n";
+                        }
+
+                        if (ImGui::Button("hit")) {
+                            sampler.hits ^= mk_mask(sq);
+                            std::cout << (sampler.hits?"HIT ":"UNHIT ") << sq << "\n\n";
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("miss")) {
                             sampler.misses ^= mk_mask(sq);
+                            std::cout << (sampler.misses?"MISS ":"UNMISS ") << sq << "\n\n";
+                        }
                     }
 
                     ImGui::PopID();

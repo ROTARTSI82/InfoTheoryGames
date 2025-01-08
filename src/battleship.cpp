@@ -341,7 +341,7 @@ void BSSampler::config_to_probs() {
         }
     }
 
-    int x = 9 - (next_guess_sq % BOARD_WIDTH);
-    int y = 1 + (next_guess_sq / BOARD_WIDTH);
+    int x = 1 + (next_guess_sq % BOARD_WIDTH);
+    int y = 10 - (next_guess_sq / BOARD_WIDTH);
     std::cout << "(" << x << ", " << y << ")?";
 }
