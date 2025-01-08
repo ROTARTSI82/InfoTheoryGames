@@ -175,7 +175,7 @@ parse word = (head (splitOn "," word), read $ splitOn "," word !! 1)
 main :: IO ()
 main = do
     contents <- readFile "wordFreq2.csv"
-    let wordList = map parse $ take 50000 $ words contents
+    let wordList = map parse $ take 200000 $ words contents
 
     putStrLn "1. Length of phrase (including spaces)?"
     phraseLength <- getLine
