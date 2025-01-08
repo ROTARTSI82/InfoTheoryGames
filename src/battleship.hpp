@@ -223,7 +223,7 @@ struct BSSampler {
 
     void create_miss_masks(std::mt19937_64 &rng, bool use_config_counts);
 
-    void try_random(std::mt19937_64 &rng);
+    void try_random(std::mt19937_64 &rng, uint32_t max);
 
     void config_to_probs();
 

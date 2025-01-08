@@ -186,20 +186,33 @@ bool recurse_randsample<5, false>(grid_t working, BSSampler &samp, BSConfig2 &co
     return recurse_randsample<5, true>(working, samp, conf, perm, rng, perm_id);
 }
 
-void BSSampler::try_random(std::mt19937_64 &rng) {
-    std::vector<int> ship_perm(NUM_SHIPS);
-    std::iota(ship_perm.begin(), ship_perm.end(), 0);
-    std::shuffle(ship_perm.begin(), ship_perm.end(), rng);
-    uint64_t perm;
-    {
-        std::lock_guard<std::mutex> lg(impossible_mtx);
-        assert(impossible.size() < 120);
-        while (impossible.contains(perm = ship_perm_to_int(ship_perm)))
-            std::shuffle(ship_perm.begin(), ship_perm.end(), rng);
-    }
-
+void BSSampler::try_random(std::mt19937_64 &rng, uint32_t max) {
     BSConfig2 conf{};
-    recurse_randsample<0, true>(0, *this, conf, ship_perm.data(), &rng, perm);
+    std::uniform_int_distribution<uint8_t> range(0, 2*BOARD_SIZE-1);
+
+    while (total.load(std::memory_order_relaxed) < max) {
+        grid_t working = 0;
+        for (int i = 0; i < NUM_SHIPS; i++) {
+            conf.ships[i] = range(rng);
+            bool vert = conf.ships[i] / BOARD_SIZE;
+            int sq = conf.ships[i] % BOARD_SIZE;
+            grid_t mask = mk_ship_mask(SHIP_SIZES[i], vert, sq);
+
+            if ((working & mask) != 0 || (mask & misses) ||
+                (mk_mask(sq) & REQ_HIT_MASKS[SHIP_SIZES[i]-2][vert ? 1 : 0][BOARD_SIZE]) == 0)
+                goto continue_outer;
+            working |= mask;
+        }
+
+        if ((working & hits) != hits)
+            goto continue_outer;
+
+        // just reusing logic to dump to config_counts, not actually recursing.
+        recurse_randsample<5, true>(working, *this, conf, nullptr, nullptr, 0);
+
+    continue_outer:
+        its.fetch_add(1, std::memory_order_relaxed);
+    }
 }
 
 void BSSampler::enumerate() {
@@ -283,19 +296,14 @@ void BSSampler::multithread_enum() {
 }
 
 void BSSampler::multithread_randsample(uint32_t max) {
-    unsigned conc = std::thread::hardware_concurrency();
+    unsigned conc = 1; // std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     threads.reserve(conc);
     for (unsigned i = 0; i < conc; i++)
         threads.emplace_back([=, this]() {
             std::random_device dev;
             std::mt19937_64 rng(dev());
-            while (total < max) {
-                try_random(rng);
-                its++;
-//                if (its % 4096 == 0)
-//                    std::cout << "prog = " << total << " / " << its << std::endl;
-            }
+            try_random(rng, max);
         });
 
     for (auto &t : threads)
@@ -335,5 +343,5 @@ void BSSampler::config_to_probs() {
 
     int x = 9 - (next_guess_sq % BOARD_WIDTH);
     int y = 1 + (next_guess_sq / BOARD_WIDTH);
-    std::cout << "(" << x << ", " << y << ")?\n";
+    std::cout << "(" << x << ", " << y << ")?";
 }

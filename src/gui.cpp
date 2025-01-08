@@ -230,6 +230,7 @@ int run_battleship()
                 sampler.clear();
                 sampler.multithread_randsample(maxIt);
                 sampler.config_to_probs();
+                std::cout << std::endl;
             }
             if (ImGui::Button("Enumerate")) {
                 sampler.create_miss_masks(rng, use_config_counts);
@@ -237,6 +238,7 @@ int run_battleship()
 //                sampler.multithread_enum();
                 sampler.enumerate();
                 sampler.config_to_probs();
+                std::cout << "\th(x)=" << log2(static_cast<double>(sampler.total)) << '\n';
             }
 
             ImGui::Text("Found/Iterations: %llu/%i", sampler.total.load(std::memory_order_relaxed), (unsigned) sampler.its);
